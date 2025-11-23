@@ -23,7 +23,9 @@ app.use(cors({
         } else {
             callback(new Error('Bu kaynaktan erişime izin verilmiyor (CORS).'));
         }
-    }
+    },
+    methods: ['GET', 'POST', 'PUT', 'DELETE'], 
+    credentials: true
 }));
 
 
