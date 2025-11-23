@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState, useEffect, useCallback, createContext, useContext, type ReactNode } from 'react';
-import { LogOut, Home, Compass, Users, Bookmark, PlusSquare, Heart, MessageCircle, Send, Loader2, User as UserIcon, UserPlus, Zap, Settings, X } from 'lucide-react';
+import { LogOut, Home, Compass, Users, Bookmark, PlusSquare, Heart, MessageCircle, Send, Loader2, User as UserIcon, UserPlus, Zap, Settings, X, Trash2, Edit2, Save, MoreVertical } from 'lucide-react';
 
 // --- ORTAK STİL VE SABİTLER ---
 const API_BASE_URL = 'http://localhost:5000/api'; 
@@ -105,6 +105,8 @@ const AuthProvider = ({ children }: { children: ReactNode }) => {
         setUser(null);
         localStorage.removeItem('token');
         localStorage.removeItem('user');
+        localStorage.removeItem('currentView');
+
         setInitialLoading(false);
         displayAlert('Oturum sonlandırıldı.', 'info');
     };
@@ -328,8 +330,8 @@ const PostCard = ({ post, currentUserId, onFollowToggle, onViewProfile, onPostUp
         <div className={`bg-white p-4 sm:p-6 rounded-3xl shadow-lg mb-8 border border-gray-100 transition-all duration-500 hover:shadow-xl hover:scale-[1.005] animate-fade-in`}>
             {/* Header */}
             <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center">
-                    <div className={`w-10 h-10 rounded-full bg-[${COLORS.BG_DARK}] flex items-center justify-center text-[${COLORS.SECONDARY}] font-bold text-lg mr-3 shadow-md`}>
+                <div className="flex items-center cursor-pointer group" onClick={() => onViewProfile(post.user._id)}>
+                    <div className={`w-10 h-10 rounded-full bg-[#383a42] flex items-center justify-center text-white font-bold text-lg mr-3 shadow-md group-hover:scale-110 transition`}>
                         {post.user?.email?.[0]?.toUpperCase() || 'U'}
                     </div>
                     <div>
@@ -665,157 +667,377 @@ const HomeFeed = ({ setView, setSelectedUserId }: { setView: React.Dispatch<Reac
 
 
 // Create Post Page
+// Create Post Page - RESİM YÜKLEME (UPLOAD) ENTEGRE EDİLMİŞ HALİ
 const CreatePost = ({ setView }: { setView: React.Dispatch<React.SetStateAction<string>> }) => {
-    const { apiRequest, loading, displayAlert } = useAuth();
+    const { apiRequest, token, displayAlert } = useAuth(); // token'ı buradan alıyoruz
+    
+    // State'ler
     const [caption, setCaption] = useState('');
-    const [imageUrl, setImageUrl] = useState('https://placehold.co/600x400/A7C080/FFFFFF?text=GlowSphere+Post');
     const [tagsInput, setTagsInput] = useState('');
+    
+    // Dosya Yükleme State'leri
+    const [file, setFile] = useState<File | null>(null); // Seçilen ham dosya
+    const [previewUrl, setPreviewUrl] = useState<string | null>(null); // Ekranda göstermek için geçici URL
+    const [uploading, setUploading] = useState(false); // Yükleniyor animasyonu için
+
+    // Dosya Seçilince Çalışır
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const selectedFile = e.target.files?.[0];
+        if (selectedFile) {
+            setFile(selectedFile);
+            // Tarayıcıda önizleme oluştur (Sunucuya gitmeden hemen göstermek için)
+            setPreviewUrl(URL.createObjectURL(selectedFile));
+        }
+    };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
-        const tagsArray = tagsInput.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0);
-        
-        if (!imageUrl || !caption) {
-            displayAlert("Lütfen bir resim URL'si ve açıklama girin.", 'error');
+        if (!file) {
+            displayAlert("Lütfen bir resim seçin.", 'error');
             return;
         }
 
+        if (!caption) {
+            displayAlert("Lütfen bir açıklama yazın.", 'error');
+            return;
+        }
+
+        setUploading(true);
+
         try {
+            // 1. ADIM: Resmi Sunucuya Yükle (Multer Rotası)
+            const formData = new FormData();
+            formData.append('image', file); // Backend 'image' adıyla bekliyor
+
+            // Not: apiRequest JSON gönderdiği için burada manuel fetch kullanıyoruz
+            // çünkü FormData gönderirken Content-Type header'ı özel olmalı.
+            const uploadResponse = await fetch('http://localhost:5000/api/upload', {
+                method: 'POST',
+                // FormData gönderirken 'Content-Type' header'ını tarayıcı otomatik ayarlar, biz yazmıyoruz!
+                body: formData, 
+            });
+
+            if (!uploadResponse.ok) {
+                throw new Error('Resim yüklenemedi.');
+            }
+
+            // Backend bize dosya yolunu döner: "/uploads/resim-123.jpg"
+            const imagePath = await uploadResponse.text();
+            
+            // Backend yolu bazen Windows ters slash (\) ile gelebilir, onu düzeltelim.
+            // Ayrıca tam URL haline getirelim ki frontend'de görünsün.
+            // ÖNEMLİ: Eğer backend sadece yol dönüyorsa başına localhost ekliyoruz.
+            const fullImageUrl = `http://localhost:5000${imagePath}`;
+
+            // 2. ADIM: Postu Oluştur (Resim URL'si ile)
+            const tagsArray = tagsInput.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0);
+            
             await apiRequest('posts', 'POST', {
                 caption,
-                imageUrl,
+                imageUrl: fullImageUrl, // Artık sunucudaki adresi kaydediyoruz
                 tags: tagsArray,
             });
-            displayAlert('Post başarıyla oluşturuldu!', 'success');
-            // Formu temizle ve ana sayfaya yönlendir
+
+            displayAlert('Post başarıyla paylaşıldı!', 'success');
+            
+            // Temizlik ve Yönlendirme
             setCaption('');
             setTagsInput('');
-            setImageUrl('https://placehold.co/600x400/A7C080/FFFFFF?text=GlowSphere+Post');
+            setFile(null);
+            setPreviewUrl(null);
             setTimeout(() => setView('home'), 1000);
-        } catch (error) {
-            // Hata zaten apiRequest içinde gösteriliyor.
-        }
-    };
 
-    return (
-        <div className={`grow p-4 sm:p-8 lg:ml-64 bg-[${COLORS.BG_LIGHT}] min-h-screen pb-20 lg:pb-8 animate-fade-in`}>
-            <h1 className={`text-3xl font-extrabold text-[${COLORS.SECONDARY}] mb-8 border-b border-gray-300 pb-4`}>Yeni Post Oluştur</h1>
-            
-            <form onSubmit={handleSubmit} className="max-w-xl mx-auto bg-white p-8 rounded-3xl shadow-2xl space-y-6">
-                
-                {/* Image Preview */}
-                <div className="aspect-4/3 w-full bg-gray-100 rounded-xl overflow-hidden shadow-inner border-4 border-[#A7C080]/50 transition duration-300 hover:scale-[1.01] transform">
-                    <img
-                        src={imageUrl}
-                        alt="Post Önizleme"
-                        className="w-full h-full object-cover"
-                        onError={(e: any) => e.target.src = 'https://placehold.co/600x450/cccccc/383a42?text=Görsel+Yüklenemedi'}
-                    />
-                </div>
-
-                {/* Image URL (Placeholder) */}
-                <div>
-                    <label htmlFor="imageUrl" className="block text-sm font-medium text-gray-700">Görsel URL (Gerçekte dosya yükleme)</label>
-                    <input
-                        type="url"
-                        id="imageUrl"
-                        value={imageUrl}
-                        onChange={(e) => setImageUrl(e.target.value)}
-                        className={`mt-1 block w-full border border-gray-300 rounded-xl shadow-sm p-3 focus:ring-[${COLORS.PRIMARY}] focus:border-[${COLORS.PRIMARY}] transition`}
-                        placeholder="e.g., https://via.placeholder.com/600x400"
-                        required
-                    />
-                </div>
-
-                {/* Caption */}
-                <div>
-                    <label htmlFor="caption" className="block text-sm font-medium text-gray-700">Açıklama</label>
-                    <textarea
-                        id="caption"
-                        rows={3}
-                        value={caption}
-                        onChange={(e) => setCaption(e.target.value)}
-                        className={`mt-1 block w-full border border-gray-300 rounded-xl shadow-sm p-3 focus:ring-[${COLORS.PRIMARY}] focus:border-[${COLORS.PRIMARY}] transition`}
-                        placeholder="Ne düşünüyorsun?"
-                        required
-                    ></textarea>
-                </div>
-
-                {/* Tags */}
-                <div>
-                    <label htmlFor="tags" className="block text-sm font-medium text-gray-700">Etiketler (Virgülle Ayırın)</label>
-                    <input
-                        type="text"
-                        id="tags"
-                        value={tagsInput}
-                        onChange={(e) => setTagsInput(e.target.value)}
-                        className={`mt-1 block w-full border border-gray-300 rounded-xl shadow-sm p-3 focus:ring-[${COLORS.PRIMARY}] focus:border-[${COLORS.PRIMARY}] transition`}
-                        placeholder="#sanat, #tasarım, #glowsphere"
-                    />
-                </div>
-                
-
-                {/* Submit Button */}
-                <button
-                    type="submit"
-                    disabled={loading}
-                    className={`w-full flex items-center justify-center py-3 px-4 border border-transparent rounded-xl shadow-lg text-lg font-bold text-white bg-[${COLORS.PRIMARY}] hover:bg-[#86a86c] focus:outline-none focus:ring-4 focus:ring-[${COLORS.PRIMARY}]/50 transition duration-300 transform hover:scale-[1.01]`}
-                >
-                    {loading ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : <PlusSquare className="w-5 h-5 mr-2" />}
-                    {loading ? 'Yayınlanıyor...' : 'Postu Yayınla'}
-                </button>
-            </form>
-        </div>
-    );
-};
-
-// My Profile Page - V3 (Inputlar Düzeltildi & Loading Fix)
-const MyProfile = ({ user, fetchUser }: { user: User, fetchUser: () => Promise<void> }) => {
-    const { apiRequest, loading, displayAlert } = useAuth();
-    
-    // State'ler
-    const [bio, setBio] = useState(user.bio || '');
-    const [username, setUsername] = useState(user.username || user.email.split('@')[0]);
-    const [myPosts, setMyPosts] = useState<Post[]>([]); 
-    const [isLoadingPosts, setIsLoadingPosts] = useState(true);
-
-    // Postları Çekme
-    useEffect(() => {
-        let isMounted = true; // Memory leak önlemi
-
-        const fetchMyPosts = async () => {
-            if (!user._id) return;
-            
-            try {
-                // Backend isteği
-                const data = await apiRequest(`posts/user/${user._id}`);
-                if (isMounted) setMyPosts(data);
-            } catch (error) {
-                console.error("Postlar çekilemedi (Sunucu kapalı veya rota yok):", error);
-            } finally {
-                if (isMounted) setIsLoadingPosts(false);
-            }
-        };
-
-        fetchMyPosts();
-
-        return () => { isMounted = false; };
-    }, [user._id, apiRequest]);
-
-    const handleUpdate = async (e: React.FormEvent) => {
-        e.preventDefault();
-        try {
-            await apiRequest('interact/profile', 'PUT', { bio, username });
-            displayAlert('Profil güncellendi!', 'success');
-            fetchUser(); 
-        } catch (error) {
-            console.error("Güncelleme hatası:", error);
+        } catch (error: any) {
+            console.error(error);
+            displayAlert(error.message || 'Bir hata oluştu.', 'error');
+        } finally {
+            setUploading(false);
         }
     };
 
     return (
         <div className="w-full min-h-screen p-6 sm:p-10 lg:pl-80 transition-all duration-300">
+            <div className="max-w-2xl mx-auto animate-fade-in">
+                
+                <h1 className="text-3xl font-extrabold text-[#383a42] mb-8 border-b border-gray-200 pb-4">Yeni Post Oluştur</h1>
+                
+                <form onSubmit={handleSubmit} className="bg-white p-8 rounded-[2rem] shadow-xl space-y-8 border border-[#383a42]/5">
+                    
+                    {/* --- RESİM YÜKLEME ALANI --- */}
+                    <div className="space-y-4">
+                        <label className="block text-sm font-bold text-[#383a42] ml-1">Görsel Seç</label>
+                        
+                        {/* Gizli Input */}
+                        <input 
+                            type="file" 
+                            id="fileInput"
+                            accept="image/*"
+                            onChange={handleFileChange}
+                            className="hidden" 
+                        />
+
+                        {/* Tıklanabilir Alan */}
+                        <label 
+                            htmlFor="fileInput" 
+                            className={`flex flex-col items-center justify-center w-full aspect-video rounded-2xl border-3 border-dashed cursor-pointer transition-all duration-300 group
+                                ${previewUrl 
+                                    ? 'border-[#A7C080] bg-[#F5F5EC]' 
+                                    : 'border-gray-300 hover:border-[#A7C080] hover:bg-gray-50'
+                                }`}
+                        >
+                            {previewUrl ? (
+                                <div className="relative w-full h-full rounded-2xl overflow-hidden group">
+                                    <img src={previewUrl} alt="Önizleme" className="w-full h-full object-contain bg-black/5" />
+                                    {/* Hoverda 'Değiştir' yazısı */}
+                                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
+                                        <p className="text-white font-bold flex items-center"><Zap className="w-5 h-5 mr-2" /> Görseli Değiştir</p>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="flex flex-col items-center text-gray-400 group-hover:text-[#A7C080] transition">
+                                    <PlusSquare className="w-12 h-12 mb-3" />
+                                    <p className="font-bold">Resim Yüklemek İçin Tıkla</p>
+                                    <p className="text-xs mt-1 text-gray-400">JPG, PNG (Maks. 5MB)</p>
+                                </div>
+                            )}
+                        </label>
+                    </div>
+
+                    {/* --- AÇIKLAMA --- */}
+                    <div>
+                        <label className="block text-sm font-bold text-[#383a42] mb-2 ml-1">Açıklama</label>
+                        <textarea
+                            rows={3}
+                            value={caption}
+                            onChange={(e) => setCaption(e.target.value)}
+                            className="w-full text-black border border-transparent rounded-xl p-4 outline-none focus:border-[#A7C080] focus:bg-white transition font-medium placeholder-gray-400 resize-none"
+                            placeholder="Bu fotoğrafın hikayesi ne?"
+                        ></textarea>
+                    </div>
+
+                    {/* --- ETİKETLER --- */}
+                    <div>
+                        <label className="block text-sm font-bold text-[#383a42] mb-2 ml-1">Etiketler</label>
+                        <input
+                            type="text"
+                            value={tagsInput}
+                            onChange={(e) => setTagsInput(e.target.value)}
+                            className="w-full text-black border border-transparent rounded-xl p-4 outline-none focus:border-[#A7C080] focus:bg-white transition font-medium placeholder-gray-400"
+                            placeholder="#doğa, #seyahat (Virgülle ayırın)"
+                        />
+                    </div>
+
+                    {/* --- SUBMIT BUTONU --- */}
+                    <button
+                        type="submit"
+                        disabled={uploading}
+                        className={`w-full flex items-center justify-center py-4 px-6 rounded-xl shadow-lg text-lg font-bold text-white transition duration-300 transform hover:scale-[1.01]
+                            ${uploading 
+                                ? 'bg-gray-400 cursor-not-allowed' 
+                                : 'bg-[#383a42] hover:bg-[#4a4d57]'
+                            }`}
+                    >
+                        {uploading ? (
+                            <>
+                                <Loader2 className="w-6 h-6 animate-spin mr-2" />
+                                Yükleniyor...
+                            </>
+                        ) : (
+                            <>
+                                <Send className="w-5 h-5 mr-2" />
+                                Paylaş
+                            </>
+                        )}
+                    </button>
+                </form>
+            </div>
+        </div>
+    );
+};
+
+// My Profile Page 
+
+const MyProfile = ({ user, fetchUser }: { user: User, fetchUser: () => Promise<void> }) => {
+    const { apiRequest, loading, displayAlert } = useAuth();
+    
+
+    const [bio, setBio] = useState(user.bio || '');
+    const [username, setUsername] = useState(user.username || user.username || user.email.split('@')[0]);
+    const [myPosts, setMyPosts] = useState<Post[]>([]); 
+    const [isLoadingPosts, setIsLoadingPosts] = useState(true);
+
+    const [selectedPost, setSelectedPost] = useState<Post | null>(null); 
+    const [isEditingPost, setIsEditingPost] = useState(false); 
+    const [editCaption, setEditCaption] = useState(''); 
+
+  
+    useEffect(() => {
+        let isMounted = true;
+        const fetchMyPosts = async () => {
+            if (!user._id) return;
+            try {
+                const data = await apiRequest(`posts/user/${user._id}`);
+                if (isMounted) setMyPosts(data);
+            } catch (error) {
+                console.error("Post hatası:", error);
+            } finally {
+                if (isMounted) setIsLoadingPosts(false);
+            }
+        };
+        fetchMyPosts();
+        return () => { isMounted = false; };
+    }, [user._id, apiRequest]);
+
+    
+    const handleUpdateProfile = async (e: React.FormEvent) => {
+        e.preventDefault();
+        try {
+            await apiRequest('interact/profile', 'PUT', { bio, username });
+            displayAlert('Profil güncellendi!', 'success');
+            fetchUser(); 
+        } catch (error) { console.error(error); }
+    };
+
+   
+    const openPostDetail = (post: Post) => {
+        setSelectedPost(post);
+        setEditCaption(post.caption); 
+        setIsEditingPost(false); 
+    };
+
+    const closePostDetail = () => {
+        setSelectedPost(null);
+        setIsEditingPost(false);
+    };
+
+    const handleDeletePost = async () => {
+        if (!selectedPost) return;
+        if (!window.confirm("Bu postu silmek istediğinize emin misiniz?")) return;
+
+        try {
+            await apiRequest(`posts/${selectedPost._id}`, 'DELETE');
+
+            setMyPosts(prev => prev.filter(p => p._id !== selectedPost._id));
+            
+            displayAlert('Post silindi.', 'success');
+            closePostDetail();
+        } catch (error) {
+            displayAlert('Silme işlemi başarısız.', 'error');
+        }
+    };
+
+    const handleUpdatePost = async () => {
+        if (!selectedPost) return;
+        try {
+            const updatedPost = await apiRequest(`posts/${selectedPost._id}`, 'PUT', {
+                caption: editCaption
+            });
+
+            setMyPosts(prev => prev.map(p => p._id === selectedPost._id ? updatedPost : p));
+  
+            setSelectedPost(updatedPost);
+            
+            setIsEditingPost(false);
+            displayAlert('Post güncellendi!', 'success');
+        } catch (error) {
+            displayAlert('Güncelleme başarısız.', 'error');
+        }
+    };
+
+    return (
+        <div className="w-full min-h-screen p-6 sm:p-10 lg:pl-80 transition-all duration-300 relative">
+            
+            {/* --- POST DETAY MODALI --- */}
+            {selectedPost && (
+                <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
+                    {/* Kapatma Butonu */}
+                    <button onClick={closePostDetail} className="absolute top-5 right-5 text-white hover:text-red-400 transition">
+                        <X className="w-5 h-5" />
+                    </button>
+
+                    <div className="bg-white w-full max-w-5xl h-[80vh] rounded-[2rem] overflow-hidden flex flex-col md:flex-row shadow-2xl relative" onClick={(e) => e.stopPropagation()}>
+                        
+                        {/* Sol: Resim Alanı */}
+                        <div className="w-full md:w-3/5 h-1/2 md:h-full bg-black flex items-center justify-center">
+                            <img src={selectedPost.imageUrl} alt="Post Detay" className="max-w-full max-h-full object-contain" />
+                        </div>
+
+                        {/* Sağ: Bilgi ve İşlem Alanı */}
+                        <div className="w-full md:w-2/5 h-1/2 md:h-full bg-white flex flex-col">
+                            
+                            {/* Header: Kullanıcı ve İşlemler */}
+                            <div className="p-6 border-b border-gray-100 flex items-center justify-between">
+                                <div className="flex items-center space-x-3">
+                                    <div className="w-10 h-10 rounded-full bg-[#383a42] flex items-center justify-center text-white font-bold">
+                                        {user.email[0].toUpperCase()}
+                                    </div>
+                                    <div>
+                                        <p className="font-bold text-[#383a42]">@{username}</p>
+                                        <p className="text-xs text-gray-400">Post Sahibi</p>
+                                    </div>
+                                </div>
+                                
+                                {/* Edit / Delete Butonları (Sadece kendi postunsa) */}
+                                <div className="flex space-x-2">
+                                    {!isEditingPost ? (
+                                        <>
+                                            <button onClick={() => setIsEditingPost(true)} className="p-2 hover:bg-gray-100 rounded-full text-lime-500 transition" title="Düzenle">
+                                                <Edit2 className="w-5 h-5" />
+                                            </button>
+                                            <button onClick={handleDeletePost} className="p-2 hover:bg-red-50 rounded-full text-red-600 transition" title="Sil">
+                                                <Trash2 className="w-5 h-5" />
+                                            </button>
+                                        </>
+                                    ) : (
+                                        <button onClick={() => setIsEditingPost(false)} className="p-2 hover:bg-gray-100 rounded-full text-white hover:text-red-500 transition" title="İptal">
+                                            <X className="w-5 h-5" />
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* İçerik: Açıklama ve Yorumlar */}
+                            <div className="flex-grow p-6 overflow-y-auto">
+                                {isEditingPost ? (
+                                    <div className="space-y-4">
+                                        <label className="text-sm font-bold text-gray-700">Açıklamayı Düzenle</label>
+                                        <textarea 
+                                            value={editCaption} 
+                                            onChange={(e) => setEditCaption(e.target.value)}
+                                            className="w-full p-4 border rounded-xl text-black focus:border-[#A7C080] outline-none resize-none h-32"
+                                        />
+                                        <button onClick={handleUpdatePost} className="w-full py-3 bg-[#383a42] text-white rounded-xl font-bold hover:text-[#A7C080] transition flex items-center justify-center">
+                                            <Save className="w-5 h-5 mr-2" /> Kaydet
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <>
+                                        <p className="text-[#383a42] text-lg leading-relaxed mb-4">{selectedPost.caption}</p>
+                                        <div className="flex flex-wrap gap-2 mb-6">
+                                            {selectedPost.tags?.map((tag, i) => (
+                                                <span key={i} className="text-sm text-[#A7C080] font-medium">#{tag}</span>
+                                            ))}
+                                        </div>
+                                        
+                                        <div className="border-t pt-4">
+                                            <p className="text-gray-400 text-sm text-center italic">Henüz yorum yok.</p>
+                                        </div>
+                                    </>
+                                )}
+                            </div>
+
+                            {/* Footer: Tarih */}
+                            <div className="p-4 border-t border-gray-100 text-xs text-gray-400 text-center">
+                                {new Date(selectedPost.createdAt).toLocaleDateString()} tarihinde paylaşıldı
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+
+            {/* --- ANA PROFİL İÇERİĞİ --- */}
             <div className="max-w-4xl mx-auto space-y-8 animate-fade-in">
                 
                 {/* 1. Profil Kartı */}
@@ -842,35 +1064,30 @@ const MyProfile = ({ user, fetchUser }: { user: User, fetchUser: () => Promise<v
                     </div>
                 </div>
 
-                {/* 2. Düzenleme Formu (INPUTLAR DÜZELTİLDİ) */}
+                {/* 2. Düzenleme Formu */}
                 <div className="bg-[#F5F5EC] p-6 rounded-3xl border-2 border-[#A7C080]/20">
                     <h3 className="font-bold text-[#383a42] mb-6 flex items-center text-lg">
                         <Settings className="w-5 h-5 mr-2" /> Profili Düzenle
                     </h3>
                     
-                    <form onSubmit={handleUpdate} className="flex flex-col gap-6">
-                        
-                        {/* Kullanıcı Adı Inputu */}
+                    <form onSubmit={handleUpdateProfile} className="flex flex-col gap-6">
                         <div>
                             <label className="block text-sm font-bold text-[#383a42] mb-2 ml-1">Kullanıcı Adı</label>
                             <input
                                 type="text"
                                 value={username}
                                 onChange={(e) => setUsername(e.target.value)}
-                                // text-[#383a42] eklendi (Koyu renk yazı)
                                 className="w-full bg-white text-[#383a42] border border-gray-200 rounded-xl p-4 outline-none focus:border-[#A7C080] focus:ring-2 focus:ring-[#A7C080]/20 transition shadow-sm font-medium placeholder-gray-400"
                                 placeholder="Örn: glowmaster"
                             />
                         </div>
 
-                        {/* Biyografi Inputu */}
                         <div>
                             <label className="block text-sm font-bold text-[#383a42] mb-2 ml-1">Biyografi</label>
                             <textarea
                                 rows={3}
                                 value={bio}
                                 onChange={(e) => setBio(e.target.value)}
-                                // text-[#383a42] eklendi
                                 className="w-full bg-white text-[#383a42] border border-gray-200 rounded-xl p-4 outline-none focus:border-[#A7C080] focus:ring-2 focus:ring-[#A7C080]/20 transition shadow-sm font-medium placeholder-gray-400 resize-none"
                                 placeholder="Kendinden bahset..."
                             ></textarea>
@@ -888,7 +1105,7 @@ const MyProfile = ({ user, fetchUser }: { user: User, fetchUser: () => Promise<v
                     </form>
                 </div>
 
-                {/* 3. Post Izgarası */}
+                {/* 3. Post Izgarası (GÜNCELLENDİ: Tıklama özelliği geldi) */}
                 <div>
                     <h3 className="text-2xl font-bold text-[#383a42] mb-6 border-b pb-2 inline-block">Postlarım</h3>
                     
@@ -899,19 +1116,28 @@ const MyProfile = ({ user, fetchUser }: { user: User, fetchUser: () => Promise<v
                     ) : myPosts.length === 0 ? (
                         <div className="text-center py-12 bg-white rounded-3xl shadow-sm border border-dashed border-gray-300">
                             <p className="text-gray-500 font-medium mb-2">Henüz hiç post paylaşmadın.</p>
-                            <p className="text-sm text-gray-400">İlk postunu oluşturarak profilini renklendir!</p>
                         </div>
                     ) : (
                         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                             {myPosts.map((post) => (
-                                <div key={post._id} className="group relative aspect-square bg-gray-200 rounded-2xl overflow-hidden cursor-pointer shadow-md hover:shadow-xl transition-all duration-300">
+                                <div 
+                                    key={post._id} 
+                                    // YENİ: Tıklayınca Modalı Aç
+                                    onClick={() => openPostDetail(post)}
+                                    className="group relative aspect-square bg-gray-200 rounded-2xl overflow-hidden cursor-pointer shadow-md hover:shadow-xl transition-all duration-300"
+                                >
                                     <img 
                                         src={post.imageUrl} 
                                         alt={post.caption} 
                                         className="w-full h-full object-cover group-hover:scale-110 transition duration-500"
                                     />
-                                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition duration-300 flex items-center justify-center gap-4 text-white font-bold">
-                                        <span className="flex items-center"><Heart className="w-5 h-5 mr-1 fill-white" /> {post.likesCount}</span>
+                                    {/* Overlay */}
+                                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition duration-300 flex flex-col items-center justify-center gap-2 text-white font-bold">
+                                        <div className="flex gap-4">
+                                            <span className="flex items-center"><Heart className="w-5 h-5 mr-1 fill-white" /> {post.likesCount}</span>
+                                            <span className="flex items-center"><MessageCircle className="w-5 h-5 mr-1 fill-white" /> {post.commentsCount}</span>
+                                        </div>
+                                        <p className="text-xs uppercase tracking-widest mt-2 border-b border-white pb-1">İncele</p>
                                     </div>
                                 </div>
                             ))}
@@ -926,117 +1152,266 @@ const MyProfile = ({ user, fetchUser }: { user: User, fetchUser: () => Promise<v
 
 
 // Public Profile Page (View another user)
+
 const PublicProfile = ({ selectedUserId, setView }: { selectedUserId: string | null, setView: React.Dispatch<React.SetStateAction<string>> }) => {
-     // Bu sayfada seçilen kullanıcının verileri backend'den çekilmelidir.
-     const mockUser = { id: selectedUserId, email: "public_user@example.com", bio: "GlowSphere kullanıcısı." } 
-     const mockPosts = [1, 2, 3, 4, 5, 6]; 
-
-     if (!selectedUserId) {
-         return <div className="grow p-8 text-center">Kullanıcı seçilmedi.</div>
-     }
-
-     return (
-        <div className={`grow p-4 sm:p-8 lg:ml-64 bg-[${COLORS.BG_LIGHT}] min-h-screen pb-20 lg:pb-8 animate-fade-in`}>
-             <button onClick={() => setView('home')} className={`text-[${COLORS.SECONDARY}] mb-4 flex items-center hover:text-[${COLORS.PRIMARY}] transition`}>
-                &larr; Ana Akışa Dön
-            </button>
-            <div className="max-w-2xl mx-auto bg-white p-8 rounded-3xl shadow-2xl space-y-8">
-                {/* Profil Header */}
-                <div className="flex flex-col items-center border-b pb-6 border-gray-200">
-                    <div className={`w-24 h-24 rounded-full bg-gray-400 flex items-center justify-center text-white font-extrabold text-3xl mb-4 shadow-xl`}>
-                        {mockUser.email[0].toUpperCase()}
-                    </div>
-                    <h2 className={`text-2xl font-bold text-[${COLORS.SECONDARY}]`}>@{mockUser.email.split('@')[0]}</h2>
-                    <p className="text-gray-500 text-sm">{mockUser.email}</p>
-                    <p className="mt-3 text-center max-w-sm italic">{mockUser.bio}</p>
-                    <div className="flex space-x-4 mt-4">
-                         <button className={`text-lg font-bold py-2 px-6 rounded-full text-white bg-blue-500 hover:bg-blue-600 transition duration-300 transform hover:scale-[1.05]`}>
-                            Takip Et
-                        </button>
-                        <button className={`text-lg font-bold py-2 px-6 rounded-full text-[${COLORS.SECONDARY}] bg-gray-200 hover:bg-gray-300 transition duration-300 transform hover:scale-[1.05]`}>
-                            Mesaj Gönder
-                        </button>
-                    </div>
-                </div>
-                
-                {/* Kullanıcı Postları Izgarası */}
-                <h3 className={`text-xl font-semibold text-[${COLORS.SECONDARY}] border-b pb-2`}>Postları ({mockPosts.length})</h3>
-                <div className="grid grid-cols-3 gap-2">
-                    {mockPosts.map((p, index) => (
-                        <div key={index} className="aspect-square bg-gray-100 rounded-lg shadow-inner overflow-hidden hover:opacity-80 transition duration-300">
-                            <img src={`https://placehold.co/300x300/F0F0F0/${COLORS.SECONDARY}?text=Post+${index+1}`} alt="Kullanıcı Postu" className="w-full h-full object-cover" />
-                        </div>
-                    ))}
-                </div>
-            </div>
-        </div>
-     )
-}
-
-
-// Explore Page (All Posts)
-const Explore = ({ setView, setSelectedUserId }: { setView: React.Dispatch<React.SetStateAction<string>>, setSelectedUserId: React.Dispatch<React.SetStateAction<string | null>> }) => {
-    const { user, apiRequest, loading } = useAuth();
-    const [allPosts, setAllPosts] = useState<Post[]>([]);
+    const { user, apiRequest, displayAlert } = useAuth();
     
-    const fetchAllPosts = useCallback(async () => {
-        try {
-            const data = await apiRequest('posts/all');
-            setAllPosts(data);
-        } catch (error) {
-            console.error("Explore postları yüklenemedi:", error);
-        }
-    }, [apiRequest]);
+    const [profileUser, setProfileUser] = useState<any>(null);
+    const [userPosts, setUserPosts] = useState<Post[]>([]);
+    const [loading, setLoading] = useState(true);
+    
+    // Modal ve Takip State'leri
+    const [selectedPost, setSelectedPost] = useState<Post | null>(null);
+    const [isFollowing, setIsFollowing] = useState(false);
+    const [followLoading, setFollowLoading] = useState(false);
 
+    // Profil Verilerini Çek
     useEffect(() => {
-        const loadAllPosts = async () => {
-            if (user && allPosts.length === 0 && !loading) {
-                await fetchAllPosts();
+        const loadProfileData = async () => {
+            if (!selectedUserId) return;
+            setLoading(true);
+            try {
+                // 1. Kullanıcı Bilgisi
+                const userData = await apiRequest(`users/${selectedUserId}`);
+                setProfileUser(userData.user);
+
+                // 2. Postları
+                const postsData = await apiRequest(`posts/user/${selectedUserId}`);
+                setUserPosts(postsData);
+
+                // NOT: Burada normalde "Ben bu kişiyi takip ediyor muyum?" kontrolü de yapılır.
+                // Şimdilik varsayılan olarak false başlıyor.
+                
+            } catch (error) {
+                console.error("Profil yüklenemedi:", error);
+                displayAlert("Kullanıcı profili görüntülenemedi.", 'error');
+                setView('home'); 
+            } finally {
+                setLoading(false);
             }
         };
-        loadAllPosts();
-    }, [user, fetchAllPosts, allPosts.length, loading]);
 
-    const handleFollowToggle = (targetUserId: string) => {
-        console.log(`Takip denemesi: ${targetUserId}`);
+        loadProfileData();
+    }, [selectedUserId, apiRequest, setView]);
+
+    // Takip Et / Bırak Fonksiyonu
+    const handleFollow = async () => {
+        if (!profileUser || followLoading) return;
+        setFollowLoading(true);
+        try {
+            const result = await apiRequest(`interact/follow/${profileUser._id}`, 'POST');
+            
+            if (result.action === 'follow') {
+                setIsFollowing(true);
+                displayAlert(`${profileUser.username} takip edildi!`, 'success');
+            } else {
+                setIsFollowing(false);
+                displayAlert(`${profileUser.username} takipten çıkarıldı.`, 'info');
+            }
+        } catch (error) {
+            displayAlert("İşlem başarısız.", 'error');
+        } finally {
+            setFollowLoading(false);
+        }
     };
-    
-    const onViewProfile = (userId: string) => {
-        setSelectedUserId(userId);
-        setView('publicProfile');
+
+    if (loading) {
+        return (
+            <div className="w-full h-screen flex items-center justify-center bg-[#F5F5EC]">
+                <Loader2 className="w-10 h-10 animate-spin text-[#A7C080]" />
+            </div>
+        );
     }
 
+    if (!profileUser) return null;
+
+    // Kendi profilin mi kontrolü?
+    const isOwnProfile = user && user._id === profileUser._id;
+
     return (
-         <div className={`grow p-4 sm:p-8 lg:ml-64 bg-[${COLORS.BG_LIGHT}] min-h-screen pb-20 lg:pb-8 animate-fade-in`}>
-            <h1 className={`text-3xl font-extrabold text-[${COLORS.SECONDARY}] mb-8 border-b border-gray-300 pb-4`}>Keşfet ve Yeni İçerikler</h1>
+        <div className="w-full min-h-screen p-6 sm:p-10 lg:pl-80 transition-all duration-300 relative">
             
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-                {loading && <LoadingSpinner />}
-                {!loading && allPosts.length === 0 && (
-                    <div className="col-span-full p-10 bg-white rounded-xl text-center text-gray-500 shadow-lg">
-                        <p className="text-xl font-semibold mb-2">Henüz Post Yok</p>
-                    </div>
-                )}
-                {allPosts.map(post => (
-                    <div key={post._id} onClick={() => onViewProfile(post.user._id)} className="bg-white rounded-xl shadow-lg overflow-hidden transition duration-300 hover:shadow-2xl transform hover:scale-[1.03] cursor-pointer">
-                         <div className="aspect-square w-full">
-                            <img
-                                src={post.imageUrl || 'https://placehold.co/400x400/cccccc/383a42?text=Keşfet'}
-                                alt="Keşfet Postu"
-                                className="w-full h-full object-cover"
-                            />
+            {/* --- DETAY MODALI (SADECE GÖRÜNTÜLEME) --- */}
+            {selectedPost && (
+                <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in" onClick={() => setSelectedPost(null)}>
+                     {/* Kapat Butonu */}
+                     <button className="absolute top-5 right-5 text-white hover:text-red-400 transition">
+                        <X className="w-10 h-10" />
+                    </button>
+
+                    <div className="bg-white w-full max-w-5xl h-[80vh] rounded-[2rem] overflow-hidden flex flex-col md:flex-row shadow-2xl relative" onClick={(e) => e.stopPropagation()}>
+                        {/* Sol: Resim */}
+                        <div className="w-full md:w-3/5 h-1/2 md:h-full bg-black flex items-center justify-center">
+                            <img src={selectedPost.imageUrl} alt="Detay" className="max-w-full max-h-full object-contain" />
                         </div>
-                         <div className="p-3">
-                            <p className={`font-semibold text-sm text-[${COLORS.SECONDARY}] truncate`}>{post.caption}</p>
-                            <p className="text-xs text-gray-500">@{post.user?.email?.split('@')?.[0]}</p>
+
+                        {/* Sağ: Bilgiler (Edit/Sil butonları YOK) */}
+                        <div className="w-full md:w-2/5 h-1/2 md:h-full bg-white flex flex-col">
+                            {/* Header */}
+                            <div className="p-6 border-b border-gray-100 flex items-center space-x-3">
+                                <div className="w-10 h-10 rounded-full bg-[#383a42] flex items-center justify-center text-white font-bold">
+                                    {profileUser.email[0].toUpperCase()}
+                                </div>
+                                <div>
+                                    <p className="font-bold text-[#383a42]">@{profileUser.username || profileUser.email.split('@')[0]}</p>
+                                    <p className="text-xs text-gray-400">GlowSphere Üyesi</p>
+                                </div>
+                            </div>
+
+                            {/* İçerik */}
+                            <div className="flex-grow p-6 overflow-y-auto">
+                                <p className="text-[#383a42] text-lg leading-relaxed mb-4">{selectedPost.caption}</p>
+                                <div className="flex flex-wrap gap-2 mb-6">
+                                    {selectedPost.tags?.map((tag, i) => (
+                                        <span key={i} className="text-sm text-[#A7C080] font-medium">#{tag}</span>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Footer */}
+                            <div className="p-4 border-t border-gray-100 text-xs text-gray-400 text-center">
+                                {new Date(selectedPost.createdAt).toLocaleDateString()} tarihinde paylaşıldı
+                            </div>
                         </div>
                     </div>
-                ))}
+                </div>
+            )}
+
+            <div className="max-w-4xl mx-auto space-y-8 animate-fade-in">
+                {/* Geri Dön */}
+                <button onClick={() => setView('home')} className="flex items-center text-white hover:text-lime-200 transition font-bold">
+                    &larr; Ana Akışa Dön
+                </button>
+
+                {/* Profil Kartı */}
+                <div className="bg-white rounded-[2rem] p-8 shadow-lg border border-[#383a42]/5 flex flex-col md:flex-row items-center md:items-start gap-8">
+                    <div className="w-32 h-32 rounded-full bg-[#383a42] flex items-center justify-center text-white font-extrabold text-5xl shadow-xl shrink-0">
+                        {profileUser.email[0].toUpperCase()}
+                    </div>
+
+                    <div className="flex-grow text-center md:text-left">
+                        <h2 className="text-3xl font-extrabold text-[#383a42]">@{profileUser.username || profileUser.email.split('@')[0]}</h2>
+                        <p className="text-gray-500 font-medium mb-4">{profileUser.email}</p>
+
+                        <div className="flex justify-center md:justify-start gap-6 my-6">
+                            <div className="text-center">
+                                <span className="block font-bold text-xl text-[#383a42]">{userPosts.length}</span>
+                                <span className="text-xs text-gray-500 uppercase tracking-wide">Post</span>
+                            </div>
+                            <div className="text-center">
+                                <span className="block font-bold text-xl text-[#383a42]">0</span>
+                                <span className="text-xs text-gray-500 uppercase tracking-wide">Takipçi</span>
+                            </div>
+                        </div>
+                        
+                        <p className="text-[#383a42]/80 italic max-w-lg mb-6">{profileUser.bio || "Bu kullanıcı henüz biyografi eklemedi."}</p>
+                        
+                        {/* --- TAKİP ET BUTONU (KENDİ PROFİLİNSE GİZLE) --- */}
+                        {!isOwnProfile && (
+                            <button 
+                                onClick={handleFollow}
+                                disabled={followLoading}
+                                className={`font-bold py-3 px-8 rounded-xl transition shadow-md transform hover:scale-105 flex items-center justify-center
+                                    ${isFollowing 
+                                        ? 'bg-gray-200 text-[#383a42] hover:bg-gray-300' 
+                                        : 'bg-[#383a42] text-white hover:bg-[#4a4d57]'
+                                    }`}
+                            >
+                                {followLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : (isFollowing ? 'Takip Ediliyor' : 'Takip Et')}
+                            </button>
+                        )}
+                    </div>
+                </div>
+
+                {/* Paylaşımlar */}
+                <div>
+                    <h3 className="text-2xl font-bold text-[#383a42] mb-6 border-b pb-2 inline-block">Paylaşımlar</h3>
+                    {userPosts.length === 0 ? (
+                        <div className="text-center py-12 bg-white rounded-3xl shadow-sm border border-dashed border-gray-300">
+                            <p className="text-gray-500">Bu kullanıcının henüz gönderisi yok.</p>
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                            {userPosts.map((post) => (
+                                <div 
+                                    key={post._id} 
+                                    onClick={() => setSelectedPost(post)} // MODALI AÇAR
+                                    className="group relative aspect-square bg-gray-200 rounded-2xl overflow-hidden cursor-pointer shadow-md hover:shadow-xl transition-all duration-300"
+                                >
+                                    <img src={post.imageUrl} alt={post.caption} className="w-full h-full object-cover group-hover:scale-110 transition duration-500" />
+                                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center gap-4 text-white font-bold">
+                                        <span className="flex items-center"><Heart className="w-5 h-5 mr-1 fill-white" /> {post.likesCount}</span>
+                                        <p className="text-xs uppercase tracking-widest border-b border-white pb-1 absolute bottom-4">İncele</p>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
             </div>
         </div>
     );
 };
 
+// Explore Page (All Posts)
+// Explore Page (Tüm Postlar)
+const Explore = ({ setView, setSelectedUserId }: { setView: React.Dispatch<React.SetStateAction<string>>, setSelectedUserId: React.Dispatch<React.SetStateAction<string | null>> }) => {
+    const { user, apiRequest, loading } = useAuth();
+    const [allPosts, setAllPosts] = useState<Post[]>([]);
+    
+    // Tüm postları çek
+    useEffect(() => {
+        let isMounted = true;
+        const fetchAllPosts = async () => {
+            try {
+                const data = await apiRequest('posts/all'); // Backend rotası
+                if (isMounted) setAllPosts(data);
+            } catch (error) {
+                console.error("Explore hatası:", error);
+            }
+        };
+
+        if (user) fetchAllPosts();
+        return () => { isMounted = false; };
+    }, [user, apiRequest]);
+
+    const handleViewProfile = (userId: string) => {
+        setSelectedUserId(userId);
+        setView('publicProfile');
+    };
+
+    return (
+        <div className="w-full min-h-screen p-6 sm:p-10 lg:pl-80 transition-all duration-300">
+            <div className="max-w-[1600px] mx-auto animate-fade-in">
+                <h1 className="text-3xl font-extrabold text-[#383a42] mb-8">Keşfet</h1>
+                
+                {loading ? (
+                    <div className="flex justify-center"><Loader2 className="animate-spin w-10 h-10 text-[#A7C080]" /></div>
+                ) : (
+                    <div className="columns-1 sm:columns-2 md:columns-3 lg:columns-4 gap-4 space-y-4">
+                        {allPosts.map(post => (
+                            <div key={post._id} className="break-inside-avoid bg-white rounded-2xl shadow-md overflow-hidden hover:shadow-xl transition duration-300 cursor-pointer group" onClick={() => handleViewProfile(post.user._id)}>
+                                <div className="relative">
+                                    <img src={post.imageUrl} alt="Explore" className="w-full h-auto object-cover" />
+                                    <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition duration-300"></div>
+                                </div>
+                                <div className="p-4">
+                                    <p className="font-bold text-[#383a42] text-sm truncate">{post.caption}</p>
+                                    <div className="flex items-center justify-between mt-2">
+                                         <p className="text-xs text-gray-500">@{post.user?.username || post.user?.email?.split('@')[0] || 'User'}</p>
+                                         <div className="flex items-center text-xs text-gray-400">
+                                            <Heart className="w-3 h-3 mr-1" /> {post.likesCount}
+                                         </div>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+};
 
 // Simple Placeholder Page
 const PlaceholderPage = ({ title }: { title: string }) => (
@@ -1051,7 +1426,6 @@ const PlaceholderPage = ({ title }: { title: string }) => (
 
 
 // Auth Form (Login/Register)
-// Auth Form - TAM EKRAN KAPLAYAN & RESPONSIVE VERSİYON
 const AuthForm = ({ isRegister, toggleAuthMode }: { isRegister: boolean, toggleAuthMode: () => void }) => {
     const { login, register, loading } = useAuth();
     const [email, setEmail] = useState('');
@@ -1073,20 +1447,16 @@ const AuthForm = ({ isRegister, toggleAuthMode }: { isRegister: boolean, toggleA
     };
 
     return (
-        // ANA KAPLAYICI: h-screen ile ekran boyuna sabitlenir, overflow-hidden ile taşmalar engellenir.
+   
         <div className="flex w-full h-screen overflow-hidden font-sans bg-[#E0E8D7]">
-            
-            {/* 1. SOL TARA (FORM ALANI) */}
-            {/* Form alanı her zaman ekranın sol yarısını (veya mobilde tamamını) kaplar ve ortalanır. */}
+ 
             <div className="w-full lg:w-1/2 h-full flex items-center justify-center p-6 relative z-20">
                 
-                <div className="w-full max-w-md bg-[#E0E8D7]"> {/* Arkaplan rengi form ile bütünleşti */}
+                <div className="w-full max-w-md bg-[#E0E8D7]"> {/* 
                     {/* Logo */}
                     <div className="flex items-center space-x-3 mb-8">
-                        <div className="bg-[#383a42] p-2.5 rounded-xl shadow-lg">
-                            <Zap className="w-6 h-6 text-[#A7C080]" />
-                        </div>
-                        <h1 className="text-3xl font-extrabold text-[#383a42] tracking-tighter">glowsphere.</h1>
+                        
+                        <h1 className="text-xl font-extrabold text-[#383a42] tracking-tighter hover:text-[#5fa51e]">glowsphere.</h1>
                     </div>
 
                     {/* Başlıklar */}
@@ -1102,13 +1472,13 @@ const AuthForm = ({ isRegister, toggleAuthMode }: { isRegister: boolean, toggleA
                     {/* Form */}
                     <form onSubmit={handleSubmit} className="space-y-5">
                         <div className="space-y-1.5">
-                            <label className="text-sm font-bold text-[#383a42] ml-1">E-posta</label>
+                            <label className="text-sm font-bold text-[#383a42] ml-1 mb-2">E-posta</label>
                             <input
                                 type="email"
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
                                 placeholder="ismin@ornek.com"
-                                className="w-full bg-[#F5F5EC] border-2 border-transparent focus:border-[#A7C080] text-[#383a42] rounded-xl p-3.5 outline-none transition-all shadow-sm placeholder-gray-400 font-medium"
+                                className="w-full bg-[#F5F5EC] border-2 border-transparent focus:border-[#A7C080] text-[#383a42] rounded-xl p-3.5 mt-2 outline-none transition-all shadow-sm placeholder-gray-400 font-medium"
                                 required
                             />
                         </div>
@@ -1120,7 +1490,7 @@ const AuthForm = ({ isRegister, toggleAuthMode }: { isRegister: boolean, toggleA
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
                                 placeholder="••••••••"
-                                className="w-full bg-[#F5F5EC] border-2 border-transparent focus:border-[#A7C080] text-[#383a42] rounded-xl p-3.5 outline-none transition-all shadow-sm placeholder-gray-400 font-medium"
+                                className="w-full bg-[#F5F5EC] border-2 border-transparent focus:border-[#A7C080] text-[#383a42] rounded-xl p-3.5 mt-2 outline-none transition-all shadow-sm placeholder-gray-400 font-medium"
                                 required
                             />
                         </div>
@@ -1134,16 +1504,16 @@ const AuthForm = ({ isRegister, toggleAuthMode }: { isRegister: boolean, toggleA
                         <button
                             type="submit"
                             disabled={loading}
-                            className="w-full py-3.5 px-4 rounded-xl shadow-lg text-base font-bold text-white bg-[#383a42] hover:bg-[#232429] hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 mt-2"
+                            className="w-full py-3.5 px-4 rounded-xl shadow-lg text-base font-bold text-white bg-[#383a42] hover:text-lime-200 hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 mt-2"
                         >
-                            {loading ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : (isRegister ? 'Kayıt Ol' : 'Giriş Yap')}
+                            {loading ? <Loader2 className="w-7 h-7 animate-spin mx-auto" /> : (isRegister ? 'Kayıt Ol' : 'Giriş Yap')}
                         </button>
                     </form>
 
                     {/* Alt Link */}
                     <p className="text-center mt-6 text-gray-600 text-sm font-medium">
                         {isRegister ? 'Zaten hesabınız var mı?' : "Hesabınız yok mu?"}
-                        <button onClick={toggleAuthMode} className="ml-1.5 font-bold text-[#383a42] hover:text-[#A7C080] underline decoration-2 decoration-transparent hover:decoration-[#A7C080] transition-all">
+                        <button onClick={toggleAuthMode} className="ml-4 font-bold text-white hover:text-[#A7C080] underline decoration-2 decoration-transparent hover:decoration-[#A7C080] transition-all">
                             {isRegister ? 'Giriş Yap' : 'Kayıt Ol'}
                         </button>
                     </p>
@@ -1155,38 +1525,31 @@ const AuthForm = ({ isRegister, toggleAuthMode }: { isRegister: boolean, toggleA
             <div className="hidden lg:flex w-1/2 h-full bg-[#1a1b1e] relative overflow-hidden items-center justify-center">
                 
                 {/* Glow Efekti */}
-                <div className="absolute w-[500px] h-[500px] bg-[#A7C080] rounded-full blur-[150px] opacity-10 pointer-events-none z-0"></div>
+                <div className="absolute w-[500px] h-[500px] bg-[#A7C080] rounded-full blur-[150px] opacity-60 pointer-events-none z-0"></div>
 
-                {/* GRID WRAPPER:
-                   Bu kısım çok önemli. w-[140%] ve h-[140%] vererek ekranın dışına taşırıyoruz.
-                   Böylece rotate yaptığımızda kenarlarda boşluk kalmıyor.
-                   flex-shrink-0 sayesinde resimler sıkışmıyor.
-                */}
                 <div className="w-[140%] h-[140%] grid grid-cols-2 gap-4 transform rotate-6 origin-center animate-fade-in p-4">
                     
-                    {/* Sol Sütun (Yukarı kayıyormuş hissi) */}
                     <div className="flex flex-col gap-4 -mt-20">
                         <div className="flex-1 bg-gray-800 rounded-3xl overflow-hidden relative group">
-                             <img src="https://images.unsplash.com/photo-1629196914375-f7e48f477b6d?q=80&w=800&auto=format&fit=crop" className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition duration-700" alt="Aesthetic" />
+                             <img src="/images/5.jpeg" className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition duration-700" alt="Aesthetic" />
                         </div>
                         <div className="flex-[1.5] bg-gray-800 rounded-3xl overflow-hidden relative group">
-                             <img src="https://images.unsplash.com/photo-1615887023516-9b6c50f886f6?q=80&w=800&auto=format&fit=crop" className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition duration-700" alt="Aesthetic" />
+                             <img src="/images/3.jpeg" className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition duration-700" alt="Aesthetic" />
                         </div>
                         <div className="flex-1 bg-gray-800 rounded-3xl overflow-hidden relative group">
-                             <img src="https://images.unsplash.com/photo-1518531933037-91b2f5f229cc?q=80&w=800&auto=format&fit=crop" className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition duration-700" alt="Aesthetic" />
+                             <img src="/images/4.jpeg" className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition duration-700" alt="Aesthetic" />
                         </div>
                     </div>
 
-                    {/* Sağ Sütun (Aşağı kayıyormuş hissi) */}
                     <div className="flex flex-col gap-4 mt-20">
                          <div className="flex-[1.2] bg-gray-800 rounded-3xl overflow-hidden relative group">
-                             <img src="https://images.unsplash.com/photo-1507643179173-442f01eb0932?q=80&w=800&auto=format&fit=crop" className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition duration-700" alt="Aesthetic" />
+                             <img src="/images/1.jpeg" className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition duration-700" alt="Aesthetic" />
                         </div>
                         <div className="flex-1 bg-gray-800 rounded-3xl overflow-hidden relative group">
-                             <img src="https://images.unsplash.com/photo-1490750967868-58cb75069ed6?q=80&w=800&auto=format&fit=crop" className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition duration-700" alt="Aesthetic" />
+                             <img src="/images/2.jpeg" className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition duration-700" alt="Aesthetic" />
                         </div>
                          <div className="flex-1 bg-gray-800 rounded-3xl overflow-hidden relative group">
-                             <img src="https://images.unsplash.com/photo-1523678802981-959dc4f70b96?q=80&w=800&auto=format&fit=crop" className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition duration-700" alt="Aesthetic" />
+                             <img src="/images/6.jpeg" className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition duration-700" alt="Aesthetic" />
                         </div>
                     </div>
                 </div>
@@ -1202,15 +1565,20 @@ const AuthForm = ({ isRegister, toggleAuthMode }: { isRegister: boolean, toggleA
 
 // --- 5. ANA UYGULAMA YAPISI ---
 
-// --- 5. ANA UYGULAMA YAPISI (DÜZELTİLMİŞ) ---
 
 const AppContent = () => {
     const { user, fetchUser, initialLoading } = useAuth();
-    const [view, setView] = useState('home'); 
+    const [view, setView] = useState(() => {
+        return localStorage.getItem('currentView') || 'home';
+    });
     const [isRegister, setIsRegister] = useState(false);
     const [selectedUserId, setSelectedUserId] = useState<string | null>(null); 
 
     const toggleAuthMode = () => setIsRegister(prev => !prev);
+
+    useEffect(() => {
+        localStorage.setItem('currentView', view);
+    }, [view]);
     
     // Loading Ekranı
     if (initialLoading) {
