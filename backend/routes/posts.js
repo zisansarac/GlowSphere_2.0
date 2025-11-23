@@ -4,6 +4,7 @@ const { protect } = require('../middleware/authMiddleware');
 const Post = require('../models/Post');
 const Like = require('../models/Like');
 
+
 // @route   POST /api/posts
 // @desc    Yeni bir post oluştur
 // @access  Private
@@ -102,6 +103,33 @@ router.get('/all', async (req, res) => {
         res.json(posts);
     } catch (err) {
         console.error(err.message);
+        res.status(500).send('Sunucu Hatası');
+    }
+});
+
+router.get('/user/:userId', protect, async (req, res) => {
+    try {
+        console.log("--- POST ÇEKME İSTEĞİ GELDİ ---");
+        console.log("Aranan User ID:", req.params.userId);
+
+        const posts = await Post.find({ user: req.params.userId }).sort({ createdAt: -1 });
+        
+        console.log("Bulunan Post Sayısı:", posts.length);
+        
+       
+        if (posts.length === 0) {
+            const anyPost = await Post.findOne();
+            if (anyPost) {
+                console.log("Veritabanındaki rastgele bir postun User ID'si:", anyPost.user.toString());
+                console.log("Eşleşmiyor mu? ->", anyPost.user.toString() === req.params.userId);
+            } else {
+                console.log("Veritabanı tamamen boş! Hiç post yok.");
+            }
+        }
+
+        res.json(posts);
+    } catch (err) {
+        console.error("HATA:", err.message);
         res.status(500).send('Sunucu Hatası');
     }
 });

@@ -2,6 +2,8 @@ const express = require('express');
 const dotenv = require('dotenv');
 const connectDB = require('./config/db');
 const cors = require('cors');
+const path = require('path');
+
 
 
 dotenv.config();
@@ -39,6 +41,9 @@ app.use('/api/users', require('./routes/user'));
 app.use('/api/posts', require('./routes/posts'));
 app.use('/api/interact', require('./routes/interact'));
 app.use('/api/feed', require('./routes/feed'));
+app.use('/api/upload', require('./routes/upload'));
+
+app.use('/uploads', express.static(path.join(__dirname, '/uploads')));
 
 const PORT = process.env.PORT || 5000;
 

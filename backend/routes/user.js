@@ -7,10 +7,13 @@ const { protect } = require('../middleware/authMiddleware');
 // @access  Private (Sadece token ile erişilebilir)
 router.get('/profile', protect, (req, res) => {
     res.json({
-        id: req.user._id,
-        email: req.user.email,
-        createdAt: req.user.createdAt,
-        message: "GlowSphere profil bilgileri yüklendi."
+       user: {
+            _id: req.user._id,
+            email: req.user.email,
+            username: req.user.username,
+            bio: req.user.bio,
+            createdAt: req.user.createdAt
+        }
     });
 });
 

@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback, createContext, useContext, type ReactNode } from 'react';
 import { LogOut, Home, Compass, Users, Bookmark, PlusSquare, Heart, MessageCircle, Send, Loader2, User as UserIcon, UserPlus, Zap, Settings, X } from 'lucide-react';
 
-// --- 0. ORTAK STİL VE SABİTLER ---
+// --- ORTAK STİL VE SABİTLER ---
 const API_BASE_URL = 'http://localhost:5000/api'; 
 
 const COLORS = {
@@ -770,74 +770,154 @@ const CreatePost = ({ setView }: { setView: React.Dispatch<React.SetStateAction<
     );
 };
 
-// My Profile Page (Self-editing profile)
+// My Profile Page - V3 (Inputlar Düzeltildi & Loading Fix)
 const MyProfile = ({ user, fetchUser }: { user: User, fetchUser: () => Promise<void> }) => {
     const { apiRequest, loading, displayAlert } = useAuth();
+    
+    // State'ler
     const [bio, setBio] = useState(user.bio || '');
     const [username, setUsername] = useState(user.username || user.email.split('@')[0]);
-    
+    const [myPosts, setMyPosts] = useState<Post[]>([]); 
+    const [isLoadingPosts, setIsLoadingPosts] = useState(true);
+
+    // Postları Çekme
+    useEffect(() => {
+        let isMounted = true; // Memory leak önlemi
+
+        const fetchMyPosts = async () => {
+            if (!user._id) return;
+            
+            try {
+                // Backend isteği
+                const data = await apiRequest(`posts/user/${user._id}`);
+                if (isMounted) setMyPosts(data);
+            } catch (error) {
+                console.error("Postlar çekilemedi (Sunucu kapalı veya rota yok):", error);
+            } finally {
+                if (isMounted) setIsLoadingPosts(false);
+            }
+        };
+
+        fetchMyPosts();
+
+        return () => { isMounted = false; };
+    }, [user._id, apiRequest]);
+
     const handleUpdate = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
             await apiRequest('interact/profile', 'PUT', { bio, username });
-            displayAlert('Profil başarıyla güncellendi!', 'success');
-            fetchUser(); // Kullanıcı bilgilerini yenile
+            displayAlert('Profil güncellendi!', 'success');
+            fetchUser(); 
         } catch (error) {
-            // Hata zaten apiRequest içinde gösteriliyor.
+            console.error("Güncelleme hatası:", error);
         }
     };
 
     return (
-        <div className={`grow p-4 sm:p-8 lg:ml-64 bg-[${COLORS.BG_LIGHT}] min-h-screen pb-20 lg:pb-8 animate-fade-in`}>
-            <h1 className={`text-3xl font-extrabold text-[${COLORS.SECONDARY}] mb-8 border-b border-gray-300 pb-4`}>Profilim ve Ayarlar</h1>
-            
-            <div className="max-w-2xl mx-auto bg-white p-8 rounded-3xl shadow-2xl space-y-8">
-                {/* Profil Header */}
-                <div className="flex flex-col items-center border-b pb-6 border-gray-200">
-                    <div className={`w-24 h-24 rounded-full bg-[${COLORS.PRIMARY}] flex items-center justify-center text-white font-extrabold text-3xl mb-4 shadow-xl`}>
+        <div className="w-full min-h-screen p-6 sm:p-10 lg:pl-80 transition-all duration-300">
+            <div className="max-w-4xl mx-auto space-y-8 animate-fade-in">
+                
+                {/* 1. Profil Kartı */}
+                <div className="bg-white rounded-[2rem] p-8 shadow-lg border border-[#383a42]/5 flex flex-col md:flex-row items-center md:items-start gap-8">
+                    <div className="w-32 h-32 rounded-full bg-[#383a42] flex items-center justify-center text-white font-extrabold text-5xl shadow-2xl shrink-0">
                         {user.email[0].toUpperCase()}
                     </div>
-                    <h2 className={`text-2xl font-bold text-[${COLORS.SECONDARY}]`}>@{username}</h2>
-                    <p className="text-gray-500 text-sm">{user.email}</p>
-                    <p className="mt-3 text-center max-w-sm">{bio || "Henüz bir biyografi eklenmedi."}</p>
+
+                    <div className="flex-grow text-center md:text-left">
+                        <h2 className="text-3xl font-extrabold text-[#383a42]">@{username}</h2>
+                        <p className="text-gray-500 font-medium mb-4">{user.email}</p>
+                        
+                        <div className="flex justify-center md:justify-start gap-6 mb-6">
+                            <div className="text-center">
+                                <span className="block font-bold text-xl text-[#383a42]">{myPosts.length}</span>
+                                <span className="text-xs text-gray-500 uppercase tracking-wide">Post</span>
+                            </div>
+                            <div className="text-center">
+                                <span className="block font-bold text-xl text-[#383a42]">0</span>
+                                <span className="text-xs text-gray-500 uppercase tracking-wide">Takipçi</span>
+                            </div>
+                        </div>
+                        <p className="text-[#383a42]/80 italic max-w-lg">{bio || "Henüz bir biyografi eklenmedi."}</p>
+                    </div>
                 </div>
 
-                {/* Güncelleme Formu */}
-                <form onSubmit={handleUpdate} className="space-y-6">
-                    <h3 className={`text-xl font-semibold text-[${COLORS.SECONDARY}] border-b pb-2`}>Bilgileri Güncelle</h3>
-                     <div>
-                        <label htmlFor="username" className="block text-sm font-medium text-gray-700">Kullanıcı Adı</label>
-                        <input
-                            type="text"
-                            id="username"
-                            value={username}
-                            onChange={(e) => setUsername(e.target.value)}
-                            className={`mt-1 block w-full border border-gray-300 rounded-xl shadow-sm p-3 focus:ring-[${COLORS.PRIMARY}] focus:border-[${COLORS.PRIMARY}] transition`}
-                            placeholder="Yeni kullanıcı adı"
-                            required
-                        />
-                    </div>
-                    <div>
-                        <label htmlFor="bio" className="block text-sm font-medium text-gray-700">Biyografi</label>
-                        <textarea
-                            id="bio"
-                            rows={3}
-                            value={bio}
-                            onChange={(e) => setBio(e.target.value)}
-                            className={`mt-1 block w-full border border-gray-300 rounded-xl shadow-sm p-3 focus:ring-[${COLORS.PRIMARY}] focus:border-[${COLORS.PRIMARY}] transition`}
-                            placeholder="Kendinizi tanıtın (Maks. 150 karakter)"
-                        ></textarea>
-                    </div>
+                {/* 2. Düzenleme Formu (INPUTLAR DÜZELTİLDİ) */}
+                <div className="bg-[#F5F5EC] p-6 rounded-3xl border-2 border-[#A7C080]/20">
+                    <h3 className="font-bold text-[#383a42] mb-6 flex items-center text-lg">
+                        <Settings className="w-5 h-5 mr-2" /> Profili Düzenle
+                    </h3>
+                    
+                    <form onSubmit={handleUpdate} className="flex flex-col gap-6">
+                        
+                        {/* Kullanıcı Adı Inputu */}
+                        <div>
+                            <label className="block text-sm font-bold text-[#383a42] mb-2 ml-1">Kullanıcı Adı</label>
+                            <input
+                                type="text"
+                                value={username}
+                                onChange={(e) => setUsername(e.target.value)}
+                                // text-[#383a42] eklendi (Koyu renk yazı)
+                                className="w-full bg-white text-[#383a42] border border-gray-200 rounded-xl p-4 outline-none focus:border-[#A7C080] focus:ring-2 focus:ring-[#A7C080]/20 transition shadow-sm font-medium placeholder-gray-400"
+                                placeholder="Örn: glowmaster"
+                            />
+                        </div>
 
-                    <button
-                        type="submit"
-                        disabled={loading}
-                        className={`w-full flex items-center justify-center py-3 px-4 rounded-xl shadow-lg text-lg font-bold text-white bg-[${COLORS.PRIMARY}] hover:bg-[#86a86c] focus:ring-4 focus:ring-[${COLORS.PRIMARY}]/50 transition duration-300 transform hover:scale-[1.01]`}
-                    >
-                        {loading ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : <Settings className="w-5 h-5 mr-2" />}
-                        {loading ? 'Güncelleniyor...' : 'Değişiklikleri Kaydet'}
-                    </button>
-                </form>
+                        {/* Biyografi Inputu */}
+                        <div>
+                            <label className="block text-sm font-bold text-[#383a42] mb-2 ml-1">Biyografi</label>
+                            <textarea
+                                rows={3}
+                                value={bio}
+                                onChange={(e) => setBio(e.target.value)}
+                                // text-[#383a42] eklendi
+                                className="w-full bg-white text-[#383a42] border border-gray-200 rounded-xl p-4 outline-none focus:border-[#A7C080] focus:ring-2 focus:ring-[#A7C080]/20 transition shadow-sm font-medium placeholder-gray-400 resize-none"
+                                placeholder="Kendinden bahset..."
+                            ></textarea>
+                        </div>
+
+                        <div className="flex justify-end">
+                            <button 
+                                type="submit"
+                                disabled={loading}
+                                className="bg-[#383a42] text-white font-bold py-3 px-8 rounded-xl hover:bg-[#4a4d57] transition disabled:opacity-50 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+                            >
+                                {loading ? 'Kaydediliyor...' : 'Değişiklikleri Kaydet'}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                {/* 3. Post Izgarası */}
+                <div>
+                    <h3 className="text-2xl font-bold text-[#383a42] mb-6 border-b pb-2 inline-block">Postlarım</h3>
+                    
+                    {isLoadingPosts ? (
+                        <div className="flex justify-center py-10">
+                            <Loader2 className="animate-spin text-[#A7C080] w-10 h-10" />
+                        </div>
+                    ) : myPosts.length === 0 ? (
+                        <div className="text-center py-12 bg-white rounded-3xl shadow-sm border border-dashed border-gray-300">
+                            <p className="text-gray-500 font-medium mb-2">Henüz hiç post paylaşmadın.</p>
+                            <p className="text-sm text-gray-400">İlk postunu oluşturarak profilini renklendir!</p>
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                            {myPosts.map((post) => (
+                                <div key={post._id} className="group relative aspect-square bg-gray-200 rounded-2xl overflow-hidden cursor-pointer shadow-md hover:shadow-xl transition-all duration-300">
+                                    <img 
+                                        src={post.imageUrl} 
+                                        alt={post.caption} 
+                                        className="w-full h-full object-cover group-hover:scale-110 transition duration-500"
+                                    />
+                                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition duration-300 flex items-center justify-center gap-4 text-white font-bold">
+                                        <span className="flex items-center"><Heart className="w-5 h-5 mr-1 fill-white" /> {post.likesCount}</span>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
 
             </div>
         </div>
