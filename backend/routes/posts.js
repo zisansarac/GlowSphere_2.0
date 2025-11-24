@@ -169,11 +169,13 @@ router.post('/:id/comment', protect, async (req, res) => {
 
         await newComment.save();
 
-        post.commentsCount = post.commentsCount + 1;
+        const realCommentCount = await Comment.countDocuments({ post: req.params.id });
+        post.commentsCount = realCommentCount;
+
         await post.save();  
 
-       const comment = await Comment.findById(newComment._id).populate('user', ['username', 'email']);
-        res.json(comment);
+      const commentToSend = await Comment.findById(newComment._id).populate('user', ['username', 'email']);
+        res.json(commentToSend);
 
     } catch (err) {
         console.error(err.message);
@@ -204,17 +206,26 @@ router.delete('/comment/:id', protect, async (req, res) => {
         const comment = await Comment.findById(req.params.id);
         if (!comment) return res.status(404).json({ msg: 'Yorum bulunamadı' });
 
-        if (comment.user.toString() !== req.user.id) {
+        const post = await Post.findById(comment.post);
+        
+        if (comment.user.toString() !== req.user.id && post.user.toString() !== req.user.id) {
             return res.status(401).json({ msg: 'Yetkisiz işlem' });
         }
 
+        const postId = comment.post; 
         await Comment.deleteOne({ _id: req.params.id });
+
+        const realCommentCount = await Comment.countDocuments({ post: postId });
+        
+        await Post.findByIdAndUpdate(postId, { commentsCount: realCommentCount });
+
         res.json({ msg: 'Yorum silindi' });
     } catch (err) {
         console.error(err.message);
         res.status(500).send('Sunucu Hatası');
     }
 });
+
 
 // @route   PUT /api/posts/like/:id
 // @desc    Postu Beğen / Beğenmekten Vazgeç (Toggle)

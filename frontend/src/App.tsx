@@ -317,8 +317,9 @@ const PostCard = ({
 
 
     // Beğeni İşlemi
-    const handleLikeToggle = async () => {
-    
+    const handleLikeToggle = async (e?: React.MouseEvent) => {
+         
+        if (e) e.stopPropagation();
         setIsAnimating(true);
         setTimeout(() => setIsAnimating(false), 1000);
 
@@ -346,7 +347,10 @@ const PostCard = ({
         }
     };
 
-    const handleSaveToggle = async () => {
+    const handleSaveToggle = async (e: React.MouseEvent) => {
+
+        e.stopPropagation();
+
         const previousSaved = isSaved;
         setIsSaved(!previousSaved);
 
@@ -366,7 +370,9 @@ const PostCard = ({
     };
 
     return (
-        <div className={`bg-white p-4 sm:p-6 rounded-4xl shadow-sm mb-8 border border-[#383a42]/5 transition-all duration-300 hover:shadow-md animate-fade-in`}>
+        <div
+        onClick={onCommentClick}
+        className={`bg-white p-4 sm:p-6 rounded-4xl shadow-sm mb-8 border border-[#383a42]/5 transition-all duration-300 hover:shadow-md animate-fade-in`}>
             {/* Header */}
             <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center cursor-pointer group" onClick={() => {
@@ -467,124 +473,216 @@ const PostCard = ({
     );
 };
 
-// --- PostDetailModal (YORUM VE DETAY PENCERESİ) ---
-const PostDetailModal = ({ post, currentUser, onClose, onCommentAdded }: { post: Post, currentUser: User, onClose: () => void, onCommentAdded?: () => void }) => {
+// --- PostDetailModal ---
+const PostDetailModal = ({ post, currentUser, onClose, onCommentChange, onPostDeleted, onPostUpdated }: { 
+    post: Post, 
+    currentUser: User, 
+    onClose: () => void, 
+    onCommentChange?: (postId: string, delta: number) => void,
+    onPostDeleted?: (postId: string) => void, 
+    onPostUpdated?: () => void  
+}) => {
     const { apiRequest, displayAlert } = useAuth();
     const [comments, setComments] = useState<any[]>([]);
     const [newComment, setNewComment] = useState('');
     const [loadingComments, setLoadingComments] = useState(true);
     const [submitting, setSubmitting] = useState(false);
 
-    // Yorumları Çek
+    const [isEditing, setIsEditing] = useState(false);
+    const [editCaption, setEditCaption] = useState(post.caption);
+    const [currentPost, setCurrentPost] = useState(post);
+    const isPostOwner = currentPost.user?._id === currentUser._id;
+
     useEffect(() => {
         const fetchComments = async () => {
             try {
                 const data = await apiRequest(`posts/${post._id}/comments`);
                 setComments(data);
-            } catch (error) {
-                console.error("Yorumlar alınamadı", error);
-            } finally {
-                setLoadingComments(false);
-            }
+            } catch (error) { console.error(error); } 
+            finally { setLoadingComments(false); }
         };
         fetchComments();
     }, [post._id, apiRequest]);
 
-    // Yorum Gönder
+    // YORUM GÖNDERME
     const handleSubmitComment = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!newComment.trim()) return;
-
         setSubmitting(true);
         try {
             const addedComment = await apiRequest(`posts/${post._id}/comment`, 'POST', { text: newComment });
-            
             setComments(prev => [addedComment, ...prev]);
             setNewComment('');
-            
-            if (onCommentAdded) onCommentAdded(); 
 
-        } catch (error) {
-            displayAlert("Yorum gönderilemedi.", 'error');
-        } finally {
-            setSubmitting(false);
-        }
+            if (onPostUpdated) onPostUpdated();
+
+        } catch (error) { displayAlert("Hata", 'error'); } 
+        finally { setSubmitting(false); }
+    };
+
+    // YORUM SİLME 
+    const handleDeleteComment = async (commentId: string) => {
+        if (!window.confirm("Yorumu silmek istiyor musunuz?")) return;
+        try {
+            await apiRequest(`posts/comment/${commentId}`, 'DELETE');
+            setComments(prev => prev.filter(c => c._id !== commentId));
+            displayAlert("Yorum silindi.", 'success');
+            
+            if (onPostUpdated) onPostUpdated();
+        } catch (error) { displayAlert("Silinemedi.", 'error'); }
+    };
+
+    // POST SİLME 
+    const handleDeletePost = async () => {
+        if (!window.confirm("Bu postu tamamen silmek istediğinize emin misiniz?")) return;
+        try {
+            await apiRequest(`posts/${currentPost._id}`, 'DELETE');
+            displayAlert("Post silindi.", 'success');
+            if (onPostDeleted) onPostDeleted(currentPost._id);
+            onClose(); 
+        } catch (error) { displayAlert("Silinemedi.", 'error'); }
+    };
+
+    // POST GÜNCELLEME 
+    const handleUpdatePost = async () => {
+        try {
+           await apiRequest(`posts/${currentPost._id}`, 'PUT', { caption: editCaption });
+            setCurrentPost(prev => ({ ...prev, caption: editCaption }));
+            setIsEditing(false);
+            if (onPostUpdated) onPostUpdated();
+        } catch (error) { displayAlert("Güncellenemedi.", 'error'); }
     };
 
     return (
         <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in" onClick={onClose}>
-            <button onClick={onClose} className="absolute top-5 right-5 text-white hover:text-red-400 transition">
-                <X className="w-10 h-10" />
+            <button onClick={onClose} className="fixed top-4 right-4 z-40 bg-black/50 p-2 rounded-full text-white hover:text-red-500 transition duration-300 shadow-lg">
+                <X className="w-8 h-8" />
             </button>
 
             <div className="bg-white w-full max-w-6xl h-[85vh] rounded-4xl overflow-hidden flex flex-col md:flex-row shadow-2xl relative" onClick={(e) => e.stopPropagation()}>
                 
                 {/* SOL: Resim */}
                 <div className="w-full md:w-[60%] h-1/2 md:h-full bg-black flex items-center justify-center">
-                    <img src={post.imageUrl} alt="Detay" className="max-w-full max-h-full object-contain" />
+                    <img src={currentPost.imageUrl} alt="Detay" className="max-w-full max-h-full object-contain" />
                 </div>
 
-                {/* SAĞ: Yorumlar ve Form */}
+                {/* SAĞ: Panel */}
                 <div className="w-full md:w-[40%] h-1/2 md:h-full bg-white flex flex-col">
                     
                     {/* Header */}
-                    <div className="p-5 border-b border-gray-100 flex items-center space-x-3 shrink-0">
-                        <div className="w-10 h-10 rounded-full bg-[#383a42] flex items-center justify-center text-white font-bold">
-                            {post.user?.email?.[0]?.toUpperCase()}
+                    <div className="p-5 border-b border-gray-100 flex items-center justify-between shrink-0">
+                        <div className="flex items-center space-x-3">
+                            <div className="w-10 h-10 rounded-full bg-[#383a42] flex items-center justify-center text-white font-bold">
+                                {currentPost.user?.email?.[0]?.toUpperCase()}
+                            </div>
+                            <div>
+                                <p className="font-bold text-[#383a42] text-sm">@{currentPost.user?.username || 'User'}</p>
+                                <p className="text-xs text-gray-400">Post Detayı</p>
+                            </div>
                         </div>
-                        <div>
-                            <p className="font-bold text-[#383a42] text-sm">@{post.user?.username || post.user?.email?.split('@')[0]}</p>
-                            <p className="text-[#383a42] text-sm mt-1">{post.caption}</p>
+
+                        {/* Edit/Delete Butonları (Sadece Sahibi Görür) */}
+                        {isPostOwner && !isEditing && (
+                            <div className="flex space-x-1">
+                                <button onClick={() => setIsEditing(true)} className="p-2 hover:bg-gray-100 rounded-full text-blue-600"><Edit2 className="w-4 h-4" /></button>
+                                <button onClick={handleDeletePost} className="p-2 hover:bg-red-50 rounded-full text-red-600"><Trash2 className="w-4 h-4" /></button>
+                            </div>
+                        )}
+                        {isEditing && (
+                            <button onClick={() => setIsEditing(false)} className="p-2 hover:bg-gray-100 rounded-full text-gray-500"><X className="w-4 h-4" /></button>
+                        )}
+                    </div>
+
+                    {/* İçerik Alanı (Scrollable) */}
+                    <div className="flex-grow p-5 overflow-y-auto space-y-4 bg-gray-50">
+                        
+                        {/* Caption (Normal veya Edit Modu) */}
+                        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 mb-4">
+                            {isEditing ? (
+                                <div className="space-y-2">
+                                    <textarea 
+                                        value={editCaption} 
+                                        onChange={(e) => setEditCaption(e.target.value)}
+                                        className="w-full p-2 border rounded-lg outline-none focus:border-[#A7C080] text-sm"
+                                        rows={3}
+                                    />
+                                    <button onClick={handleUpdatePost} className="text-xs bg-[#383a42] text-white px-3 py-1 rounded-lg w-full">Kaydet</button>
+                                </div>
+                            ) : (
+                                <p className="text-[#383a42] text-sm leading-relaxed">{currentPost.caption}</p>
+                            )}
+                        </div>
+
+                        {/* Yorumlar */}
+                        <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Yorumlar</h4>
+                        
+                        {loadingComments ? (
+                            <div className="flex justify-center"><Loader2 className="animate-spin text-[#A7C080] w-6 h-6" /></div>
+                        ) : comments.length === 0 ? (
+                            <p className="text-center text-gray-400 text-xs italic">İlk yorumu sen yap.</p>
+                        ) : (
+                            comments.map((comment: any) => (
+                                <div key={comment._id} className="flex space-x-3 group relative">
+                                    <div className="w-8 h-8 rounded-full bg-gray-300 flex items-center justify-center text-white font-bold text-xs shrink-0">
+                                        {comment.user?.username?.[0]?.toUpperCase() || 'U'}
+                                    </div>
+                                    <div className="flex-grow min-w-0"> 
+                    
+                    {/* YORUM BALONU */}
+                    <div className="bg-white p-3 rounded-r-xl rounded-bl-xl shadow-sm border border-gray-100">
+                        
+                        {/* FLEX YAPISI: Metin Sola, Buton Sağa */}
+                        <div className="flex justify-between items-start gap-2">
+                            
+                            {/* Metin Alanı */}
+                            <div className="wrap-break-word w-full">
+                                <span className="text-xs font-bold text-[#383a42] mr-2 block sm:inline">
+                                    {comment.user?.username || 'Anonim'}
+                                </span>
+                                <span className="text-sm text-gray-700">
+                                    {comment.text}
+                                </span>
+                            </div>
+
+                            {/* Silme Butonu */}
+                            {(comment.user?._id === currentUser._id || isPostOwner) && (
+                                <button 
+                                    onClick={() => handleDeleteComment(comment._id)}
+                                    className="text-gray-300 hover:text-red-500 transition opacity-0 group-hover:opacity-100 p-0.5 shrink-0"
+                                    title="Yorumu Sil"
+                                >
+                                    <Trash2 className="w-4 h-4" />
+                                </button>
+                            )}
                         </div>
                     </div>
 
-                    {/* Yorum Listesi (Scrollable) */}
-                    <div className="grow p-5 overflow-y-auto space-y-4 bg-gray-50">
-                        {loadingComments ? (
-                            <div className="flex justify-center mt-10"><Loader2 className="animate-spin text-[#A7C080]" /></div>
-                        ) : comments.length === 0 ? (
-                            <p className="text-center text-gray-400 text-sm mt-10">Henüz yorum yok. İlk yorumu sen yap!</p>
-                        ) : (
-                            comments.map((comment: any) => (
-                                <div key={comment._id} className="flex space-x-3 group">
-                                    <div className="w-8 h-8 rounded-full bg-gray-300 flex items-center justify-center text-black font-bold text-xs shrink-0">
-                                        {comment.user?.username?.[0]?.toUpperCase() || 'U'}
-                                    </div>
-                                    <div>
-                                        <p className="text-sm">
-                                            <span className="font-bold text-[#383a42] mr-2">{comment.user?.username || 'Anonim'}</span>
-                                            <span className="text-gray-700">{comment.text}</span>
-                                        </p>
-                                        <p className="text-[10px] text-gray-400 mt-1">{new Date(comment.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</p>
-                                    </div>
-                                </div>
+                    {/* Tarih */}
+                    <p className="text-[10px] text-gray-400 mt-1 ml-1">
+                        {new Date(comment.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                    </p>
+                </div>
+            </div>
                             ))
                         )}
                     </div>
 
-                    {/* Footer: Yorum Yazma Formu */}
+                    {/* Footer: Yorum Yazma */}
                     <div className="p-4 border-t border-gray-200 bg-white shrink-0">
-                        <div className="flex items-center justify-between text-sm text-gray-500 mb-2 px-1">
-                            <div className="flex items-center space-x-4">
-                                <span className="flex items-center"><Heart className="w-4 h-4 mr-1" /> {post.likesCount}</span>
-                                <span className="flex items-center"><MessageCircle className="w-4 h-4 mr-1" /> {comments.length}</span>
-                            </div>
-                            <span>{new Date(post.createdAt).toLocaleDateString()}</span>
-                        </div>
                         <form onSubmit={handleSubmitComment} className="flex items-center gap-2">
                             <input 
                                 type="text" 
                                 value={newComment}
                                 onChange={(e) => setNewComment(e.target.value)}
                                 placeholder="Yorum ekle..." 
-                                className="grow text-black rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-[#A7C080]/50 transition text-sm"
+                                className="flex-grow text-black bg-gray-100 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-[#A7C080]/50 transition text-sm"
                             />
                             <button 
                                 type="submit" 
                                 disabled={submitting || !newComment.trim()}
-                                className="text-[#A7C080] font-bold text-sm hover:text-[#383a42] disabled:opacity-50 disabled:cursor-not-allowed px-2 transition"
+                                className="text-[#A7C080] font-bold text-sm hover:text-[#383a42] disabled:opacity-50 px-2 transition"
                             >
-                                Paylaş
+                                <Send className="w-5 h-5 transform -rotate-45" />
                             </button>
                         </form>
                     </div>
@@ -594,7 +692,6 @@ const PostDetailModal = ({ post, currentUser, onClose, onCommentAdded }: { post:
         </div>
     );
 };
-
 const SidebarNavItem = ({ Icon, name, isActive, onClick }: { Icon: any, name: string, isActive?: boolean, onClick: () => void }) => (
     <button
         onClick={onClick}
@@ -912,6 +1009,15 @@ const HomeFeed = ({ setView, setSelectedUserId }: { setView: React.Dispatch<Reac
         setView('publicProfile');
     }
 
+    const handleCommentChange = (postId: string, delta: number) => {
+       
+        setFeed(prevFeed => prevFeed.map(post => 
+            post._id === postId 
+                ? { ...post, commentsCount: Math.max(0, post.commentsCount + delta) } 
+                : post
+        ));
+    };
+
     const mockCreators = [
         { id: 'mock1', name: 'Hello World', handle: 'helloworld', initials: 'HW' },
         { id: 'mock2', name: 'Zisan Sarac', handle: 'zisan.sarac', initials: 'ZS' },
@@ -921,12 +1027,18 @@ const HomeFeed = ({ setView, setSelectedUserId }: { setView: React.Dispatch<Reac
    return (
         
         <div className="w-full min-h-screen lg:pl-80 p-6 sm:p-10 transition-all duration-300">
+    
             {selectedPost && user && (
                 <PostDetailModal 
                     post={selectedPost} 
                     currentUser={user} 
                     onClose={() => setSelectedPost(null)} 
-                    onCommentAdded={handleCommentAdded}
+                    onCommentChange={handleCommentChange}
+                    onPostDeleted={(deletedId) => {
+                        setFeed(prev => prev.filter(p => p._id !== deletedId));
+                        setSelectedPost(null); 
+                    }}
+                    onPostUpdated={fetchFeed}
                 />
             )}
 
@@ -982,26 +1094,25 @@ const HomeFeed = ({ setView, setSelectedUserId }: { setView: React.Dispatch<Reac
 };
 
 
-// Create Post Page
-// Create Post Page - RESİM YÜKLEME (UPLOAD) ENTEGRE EDİLMİŞ HALİ
+// Create Post Page 
 const CreatePost = ({ setView }: { setView: React.Dispatch<React.SetStateAction<string>> }) => {
-    const { apiRequest, token, displayAlert } = useAuth(); // token'ı buradan alıyoruz
+    const { apiRequest, token, displayAlert } = useAuth(); 
     
     // State'ler
     const [caption, setCaption] = useState('');
     const [tagsInput, setTagsInput] = useState('');
     
     // Dosya Yükleme State'leri
-    const [file, setFile] = useState<File | null>(null); // Seçilen ham dosya
-    const [previewUrl, setPreviewUrl] = useState<string | null>(null); // Ekranda göstermek için geçici URL
-    const [uploading, setUploading] = useState(false); // Yükleniyor animasyonu için
+    const [file, setFile] = useState<File | null>(null); 
+    const [previewUrl, setPreviewUrl] = useState<string | null>(null); 
+    const [uploading, setUploading] = useState(false); 
 
     // Dosya Seçilince Çalışır
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const selectedFile = e.target.files?.[0];
         if (selectedFile) {
             setFile(selectedFile);
-            // Tarayıcıda önizleme oluştur (Sunucuya gitmeden hemen göstermek için)
+
             setPreviewUrl(URL.createObjectURL(selectedFile));
         }
     };
@@ -1022,15 +1133,12 @@ const CreatePost = ({ setView }: { setView: React.Dispatch<React.SetStateAction<
         setUploading(true);
 
         try {
-            // 1. ADIM: Resmi Sunucuya Yükle (Multer Rotası)
+      
             const formData = new FormData();
-            formData.append('image', file); // Backend 'image' adıyla bekliyor
-
-            // Not: apiRequest JSON gönderdiği için burada manuel fetch kullanıyoruz
-            // çünkü FormData gönderirken Content-Type header'ı özel olmalı.
+            formData.append('image', file); 
+          
             const uploadResponse = await fetch('http://localhost:5000/api/upload', {
                 method: 'POST',
-                // FormData gönderirken 'Content-Type' header'ını tarayıcı otomatik ayarlar, biz yazmıyoruz!
                 body: formData, 
             });
 
@@ -1038,26 +1146,23 @@ const CreatePost = ({ setView }: { setView: React.Dispatch<React.SetStateAction<
                 throw new Error('Resim yüklenemedi.');
             }
 
-            // Backend bize dosya yolunu döner: "/uploads/resim-123.jpg"
             const imagePath = await uploadResponse.text();
             
-            // Backend yolu bazen Windows ters slash (\) ile gelebilir, onu düzeltelim.
-            // Ayrıca tam URL haline getirelim ki frontend'de görünsün.
-            // ÖNEMLİ: Eğer backend sadece yol dönüyorsa başına localhost ekliyoruz.
+      
             const fullImageUrl = `http://localhost:5000${imagePath}`;
 
-            // 2. ADIM: Postu Oluştur (Resim URL'si ile)
+   
             const tagsArray = tagsInput.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0);
             
             await apiRequest('posts', 'POST', {
                 caption,
-                imageUrl: fullImageUrl, // Artık sunucudaki adresi kaydediyoruz
+                imageUrl: fullImageUrl, 
                 tags: tagsArray,
             });
 
             displayAlert('Post başarıyla paylaşıldı!', 'success');
             
-            // Temizlik ve Yönlendirme
+        
             setCaption('');
             setTagsInput('');
             setFile(null);
