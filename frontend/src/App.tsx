@@ -268,15 +268,18 @@ const NavItem = ({ Icon, name, isActive, onClick }: { Icon: any, name: string, i
 
 
 // Post Card Component 
-const PostCard = ({ post, currentUserId, onFollowToggle, onViewProfile, onPostUpdate, initialIsFollowing }: { 
+const PostCard = ({
+     post, currentUserId, onFollowToggle, onViewProfile, onPostUpdate, initialIsFollowing, onCommentClick 
+    }: { 
     post: Post; 
     currentUserId: string; 
     onFollowToggle: (id: string, isFollowing: boolean, setFollowing: React.Dispatch<React.SetStateAction<boolean>>) => void;
     onViewProfile: (id: string) => void;
     onPostUpdate: () => void;
     initialIsFollowing?: boolean;
+    onCommentClick?: () => void;
 }) => {
-    const { apiRequest, displayAlert } = useAuth();
+    const { apiRequest} = useAuth();
     
     // State'ler
     const [likesCount, setLikesCount] = useState(post.likesCount || 0);
@@ -287,15 +290,41 @@ const PostCard = ({ post, currentUserId, onFollowToggle, onViewProfile, onPostUp
     const [isUserFollowing, setIsUserFollowing] = useState(initialIsFollowing || false);
     const isOwner = post.user?._id === currentUserId;
 
+  useEffect(() => {
+        let isMounted = true;
+        const checkLikeStatus = async () => {
+            try {
+             
+                const data = await apiRequest(`posts/is-liked/${post._id}`);
+                if (isMounted) {
+                    setIsLiked(data.isLiked);
+                }
+            } catch (error) {
+                console.error("Beğeni durumu kontrol edilemedi", error);
+            }
+        };
+        
+        checkLikeStatus();
+        
+        return () => { isMounted = false; };
+    }, [post._id, apiRequest]);
+
+
     // Beğeni İşlemi
     const handleLikeToggle = async () => {
     
         setIsAnimating(true);
         setTimeout(() => setIsAnimating(false), 1000);
 
+        const previousLiked = isLiked;
+        const previousCount = likesCount;
+        
+        setIsLiked(!previousLiked);
+        setLikesCount(prev => previousLiked ? Math.max(0, prev - 1) : prev + 1);
+
         try {
            
-            const result = await apiRequest(`posts/like/${post._id}`, 'POST');
+            const result = await apiRequest(`posts/like/${post._id}`, 'PUT');
             
             if (result.action === 'like') {
                 setIsLiked(true);
@@ -306,6 +335,8 @@ const PostCard = ({ post, currentUserId, onFollowToggle, onViewProfile, onPostUp
             }
         } catch (error) {
             console.error("Beğeni hatası", error);
+            setIsLiked(previousLiked);
+            setLikesCount(previousCount);
         }
     };
 
@@ -382,25 +413,154 @@ const PostCard = ({ post, currentUserId, onFollowToggle, onViewProfile, onPostUp
                         className="flex items-center space-x-2 group"
                     >
                         <Heart 
-                            className={`w-7 h-7 transition-all duration-300 ${isLiked ? 'text-red-500 fill-red-500 scale-110' : 'text-[#383a42] group-hover:text-red-500'}`} 
+                            className={`w-7 h-7 transition-all duration-300 ${isLiked ? 'text-red-500 fill-red-500 scale-110' : 'text-gray-400 group-hover:text-red-500'}`} 
                         />
-                        <span className="font-bold text-[#383a42]">{likesCount}</span>
+                        <span className="font-bold text-gray-400">{likesCount}</span>
                     </button>
 
-                    {/* Comment Button (Sadece ikon) */}
-                    <button className="flex items-center space-x-2 group">
-                        <MessageCircle className="w-7 h-7 text-[#383a42] group-hover:text-[#A7C080] transition" />
-                        <span className="font-bold text-[#383a42]">{post.commentsCount}</span>
+                    {/* Comment Button */}
+                    <button 
+                    onClick={onCommentClick} className="flex items-center space-x-2 group">
+                        <MessageCircle className="w-7 h-7 text-gray-400 group-hover:text-[#A7C080] transition" />
+                        <span className="font-bold text-gray-400">{post.commentsCount}</span>
                     </button>
 
-                    <button className="flex items-center space-x-2 group">
+                    {/* <button className="flex items-center space-x-2 group">
                         <Send className="w-6 h-6 text-[#383a42] group-hover:text-[#A7C080] transition transform -rotate-45 mb-1" />
-                    </button>
+                    </button> */}
                 </div>
                 
                 <button>
-                    <Bookmark className="w-6 h-6 text-[#383a42] hover:text-[#A7C080] transition" />
+                    <Bookmark className="w-6 h-6 text-gray-400 hover:text-[#A7C080] transition" />
                 </button>
+            </div>
+        </div>
+    );
+};
+
+// --- PostDetailModal (YORUM VE DETAY PENCERESİ) ---
+const PostDetailModal = ({ post, currentUser, onClose, onCommentAdded }: { post: Post, currentUser: User, onClose: () => void, onCommentAdded?: () => void }) => {
+    const { apiRequest, displayAlert } = useAuth();
+    const [comments, setComments] = useState<any[]>([]);
+    const [newComment, setNewComment] = useState('');
+    const [loadingComments, setLoadingComments] = useState(true);
+    const [submitting, setSubmitting] = useState(false);
+
+    // Yorumları Çek
+    useEffect(() => {
+        const fetchComments = async () => {
+            try {
+                const data = await apiRequest(`posts/${post._id}/comments`);
+                setComments(data);
+            } catch (error) {
+                console.error("Yorumlar alınamadı", error);
+            } finally {
+                setLoadingComments(false);
+            }
+        };
+        fetchComments();
+    }, [post._id, apiRequest]);
+
+    // Yorum Gönder
+    const handleSubmitComment = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!newComment.trim()) return;
+
+        setSubmitting(true);
+        try {
+            const addedComment = await apiRequest(`posts/${post._id}/comment`, 'POST', { text: newComment });
+            
+            setComments(prev => [addedComment, ...prev]);
+            setNewComment('');
+            
+            if (onCommentAdded) onCommentAdded(); 
+
+        } catch (error) {
+            displayAlert("Yorum gönderilemedi.", 'error');
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
+    return (
+        <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in" onClick={onClose}>
+            <button onClick={onClose} className="absolute top-5 right-5 text-white hover:text-red-400 transition">
+                <X className="w-10 h-10" />
+            </button>
+
+            <div className="bg-white w-full max-w-6xl h-[85vh] rounded-4xl overflow-hidden flex flex-col md:flex-row shadow-2xl relative" onClick={(e) => e.stopPropagation()}>
+                
+                {/* SOL: Resim */}
+                <div className="w-full md:w-[60%] h-1/2 md:h-full bg-black flex items-center justify-center">
+                    <img src={post.imageUrl} alt="Detay" className="max-w-full max-h-full object-contain" />
+                </div>
+
+                {/* SAĞ: Yorumlar ve Form */}
+                <div className="w-full md:w-[40%] h-1/2 md:h-full bg-white flex flex-col">
+                    
+                    {/* Header */}
+                    <div className="p-5 border-b border-gray-100 flex items-center space-x-3 shrink-0">
+                        <div className="w-10 h-10 rounded-full bg-[#383a42] flex items-center justify-center text-white font-bold">
+                            {post.user?.email?.[0]?.toUpperCase()}
+                        </div>
+                        <div>
+                            <p className="font-bold text-[#383a42] text-sm">@{post.user?.username || post.user?.email?.split('@')[0]}</p>
+                            <p className="text-[#383a42] text-sm mt-1">{post.caption}</p>
+                        </div>
+                    </div>
+
+                    {/* Yorum Listesi (Scrollable) */}
+                    <div className="flex-grow p-5 overflow-y-auto space-y-4 bg-gray-50">
+                        {loadingComments ? (
+                            <div className="flex justify-center mt-10"><Loader2 className="animate-spin text-[#A7C080]" /></div>
+                        ) : comments.length === 0 ? (
+                            <p className="text-center text-gray-400 text-sm mt-10">Henüz yorum yok. İlk yorumu sen yap!</p>
+                        ) : (
+                            comments.map((comment: any) => (
+                                <div key={comment._id} className="flex space-x-3 group">
+                                    <div className="w-8 h-8 rounded-full bg-gray-300 flex items-center justify-center text-black font-bold text-xs shrink-0">
+                                        {comment.user?.username?.[0]?.toUpperCase() || 'U'}
+                                    </div>
+                                    <div>
+                                        <p className="text-sm">
+                                            <span className="font-bold text-[#383a42] mr-2">{comment.user?.username || 'Anonim'}</span>
+                                            <span className="text-gray-700">{comment.text}</span>
+                                        </p>
+                                        <p className="text-[10px] text-gray-400 mt-1">{new Date(comment.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</p>
+                                    </div>
+                                </div>
+                            ))
+                        )}
+                    </div>
+
+                    {/* Footer: Yorum Yazma Formu */}
+                    <div className="p-4 border-t border-gray-200 bg-white shrink-0">
+                        <div className="flex items-center justify-between text-sm text-gray-500 mb-2 px-1">
+                            <div className="flex items-center space-x-4">
+                                <span className="flex items-center"><Heart className="w-4 h-4 mr-1" /> {post.likesCount}</span>
+                                <span className="flex items-center"><MessageCircle className="w-4 h-4 mr-1" /> {comments.length}</span>
+                            </div>
+                            <span>{new Date(post.createdAt).toLocaleDateString()}</span>
+                        </div>
+                        <form onSubmit={handleSubmitComment} className="flex items-center gap-2">
+                            <input 
+                                type="text" 
+                                value={newComment}
+                                onChange={(e) => setNewComment(e.target.value)}
+                                placeholder="Yorum ekle..." 
+                                className="flex-grow text-black rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-[#A7C080]/50 transition text-sm"
+                            />
+                            <button 
+                                type="submit" 
+                                disabled={submitting || !newComment.trim()}
+                                className="text-[#A7C080] font-bold text-sm hover:text-[#383a42] disabled:opacity-50 disabled:cursor-not-allowed px-2 transition"
+                            >
+                                Paylaş
+                            </button>
+                        </form>
+                    </div>
+
+                </div>
             </div>
         </div>
     );
@@ -560,6 +720,8 @@ const HomeFeed = ({ setView, setSelectedUserId }: { setView: React.Dispatch<Reac
     const [isFeedLoading, setIsFeedLoading] = useState(true);
     const [isUserFollowing, setIsUserFollowing] = useState(false); 
 
+    const [selectedPost, setSelectedPost] = useState<Post | null>(null);
+ 
     const fetchFeed = useCallback(async () => {
 
         if (!user) return;
@@ -602,21 +764,34 @@ const HomeFeed = ({ setView, setSelectedUserId }: { setView: React.Dispatch<Reac
         fetchFeed(); 
     }
 
-    const mockCreators = [
-        { id: 'mock1', name: 'Hello World', handle: 'helloworld', initials: 'HW' },
-        { id: 'mock2', name: 'Zisan Sarac', handle: 'zisan.sarac', initials: 'ZS' },
-        { id: 'mock3', name: 'Reyyan', handle: 'reyyan', initials: 'R' },
-    ];
+    
+    const handleCommentAdded = () => {
+        fetchFeed(); 
+    }
     
     const onViewProfile = (userId: string) => {
         setSelectedUserId(userId);
         setView('publicProfile');
     }
 
+    const mockCreators = [
+        { id: 'mock1', name: 'Hello World', handle: 'helloworld', initials: 'HW' },
+        { id: 'mock2', name: 'Zisan Sarac', handle: 'zisan.sarac', initials: 'ZS' },
+        { id: 'mock3', name: 'Reyyan', handle: 'reyyan', initials: 'R' },
+    ];
+
    return (
         
         <div className="w-full min-h-screen lg:pl-80 p-6 sm:p-10 transition-all duration-300">
-            
+            {selectedPost && user && (
+                <PostDetailModal 
+                    post={selectedPost} 
+                    currentUser={user} 
+                    onClose={() => setSelectedPost(null)} 
+                    onCommentAdded={handleCommentAdded}
+                />
+            )}
+
             <div className="max-w-[1600px] mx-auto">
             
                 <div className="mb-10 animate-fade-in pt-4 lg:pt-0">
@@ -640,16 +815,22 @@ const HomeFeed = ({ setView, setSelectedUserId }: { setView: React.Dispatch<Reac
 
                         {/* Posts */}
                         {feed.map(post => (
+
+                            <div key={post._id} onClick={(e) => {
+                                
+                            }}>
                             <PostCard
-                                key={post._id}
                                 post={post}
-                                currentUserId={user!._id}
-                                onFollowToggle={handleFollowToggle}
-                                onViewProfile={onViewProfile}
-                                onPostUpdate={handlePostUpdate}
-                                initialIsFollowing={true}
+                                    currentUserId={user!._id}
+                                    onFollowToggle={handleFollowToggle}
+                                    onViewProfile={onViewProfile}
+                                    onPostUpdate={fetchFeed}
+                                    initialIsFollowing={true}
+                                    onCommentClick={() => setSelectedPost(post)}
                             />
-                        ))}
+                           
+                                </div>
+                        ))}                   
                     </div>
 
                     {/* Sağ: Top Creators */}
@@ -1230,12 +1411,12 @@ const PublicProfile = ({ selectedUserId, setView }: { selectedUserId: string | n
     return (
         <div className="w-full min-h-screen p-6 sm:p-10 lg:pl-80 transition-all duration-300 relative">
             
-            {/* --- DETAY MODALI (SADECE GÖRÜNTÜLEME) --- */}
+            {/* --- DETAY MODALI --- */}
             {selectedPost && (
                 <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in" onClick={() => setSelectedPost(null)}>
                      {/* Kapat Butonu */}
                      <button className="absolute top-5 right-5 text-white hover:text-red-400 transition">
-                        <X className="w-10 h-10" />
+                        <X className="w-8 h-8" />
                     </button>
 
                     <div className="bg-white w-full max-w-5xl h-[80vh] rounded-4xl overflow-hidden flex flex-col md:flex-row shadow-2xl relative" onClick={(e) => e.stopPropagation()}>
@@ -1244,7 +1425,7 @@ const PublicProfile = ({ selectedUserId, setView }: { selectedUserId: string | n
                             <img src={selectedPost.imageUrl} alt="Detay" className="max-w-full max-h-full object-contain" />
                         </div>
 
-                        {/* Sağ: Bilgiler (Edit/Sil butonları YOK) */}
+                        {/* Sağ: Bilgiler */}
                         <div className="w-full md:w-2/5 h-1/2 md:h-full bg-white flex flex-col">
                             {/* Header */}
                             <div className="p-6 border-b border-gray-100 flex items-center space-x-3">

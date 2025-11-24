@@ -212,18 +212,43 @@ router.put('/like/:id', protect, async (req, res) => {
         if (existingLike) {
  
             await Like.deleteOne({ _id: existingLike._id });
-            post.likesCount = Math.max(0, post.likesCount - 1);
-            await post.save();
-            return res.json({ action: 'unlike', likesCount: post.likesCount });
+           
         } else {
 
             const newLike = new Like({ user: req.user.id, post: req.params.id });
             await newLike.save();
-            post.likesCount += 1;
-            await post.save();
-            return res.json({ action: 'like', likesCount: post.likesCount });
         }
 
+        const realLikeCount = await Like.countDocuments({ post: req.params.id });
+
+        post.likesCount = realLikeCount;
+        await post.save();
+
+        res.json({ 
+            action: existingLike ? 'unlike' : 'like', 
+            likesCount: realLikeCount 
+        });
+
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).send('Sunucu Hatası');
+    }
+});
+
+// @route   GET /api/posts/is-liked/:id
+// @desc    Kullanıcının bu postu beğenip beğenmediğini kontrol et
+// @access  Private
+router.get('/is-liked/:id', protect, async (req, res) => {
+    try {
+        // Like tablosunda (User + Post) eşleşmesi var mı?
+        const existingLike = await Like.findOne({ 
+            user: req.user.id, 
+            post: req.params.id 
+        });
+
+        // Varsa true, yoksa false döner
+        res.json({ isLiked: !!existingLike });
+        
     } catch (err) {
         console.error(err.message);
         res.status(500).send('Sunucu Hatası');
