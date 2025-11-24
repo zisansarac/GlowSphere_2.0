@@ -1,6 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const { protect } = require('../middleware/authMiddleware');
+
+const User = require('../models/User');
 const Post = require('../models/Post');
 const Like = require('../models/Like');
 const Comment = require('../models/Comment');
@@ -22,6 +24,8 @@ router.post('/', protect, async (req, res) => {
             caption,
             imageUrl,
             tags: tags || [],
+            likesCount: 0,
+            commentsCount: 0
         });
 
         const post = await newPost.save();
@@ -80,8 +84,8 @@ router.delete('/:id', protect, async (req, res) => {
         }
 
         await Post.deleteOne({ _id: req.params.id });
-
         await Like.deleteMany({ post: req.params.id });
+        await Comment.deleteMany({ post: req.params.id });
 
         res.json({ msg: 'Post başarıyla silindi.' });
 
@@ -99,7 +103,7 @@ router.get('/all', async (req, res) => {
     try {
         const posts = await Post.find()
             .sort({ createdAt: -1 })
-            .populate('user', ['email', 'createdAt']); 
+            .populate('user', ['username','email', 'createdAt']); 
             
         res.json(posts);
     } catch (err) {
@@ -109,25 +113,9 @@ router.get('/all', async (req, res) => {
 });
 
 router.get('/user/:userId', protect, async (req, res) => {
-    try {
-        console.log("--- POST ÇEKME İSTEĞİ GELDİ ---");
-        console.log("Aranan User ID:", req.params.userId);
-
+    try { 
         const posts = await Post.find({ user: req.params.userId }).sort({ createdAt: -1 });
-        
-        console.log("Bulunan Post Sayısı:", posts.length);
-        
-       
-        if (posts.length === 0) {
-            const anyPost = await Post.findOne();
-            if (anyPost) {
-                console.log("Veritabanındaki rastgele bir postun User ID'si:", anyPost.user.toString());
-                console.log("Eşleşmiyor mu? ->", anyPost.user.toString() === req.params.userId);
-            } else {
-                console.log("Veritabanı tamamen boş! Hiç post yok.");
-            }
-        }
-
+    
         res.json(posts);
     } catch (err) {
         console.error("HATA:", err.message);
@@ -141,21 +129,10 @@ router.get('/user/:userId', protect, async (req, res) => {
 // @access  Public
 router.get('/:id', async (req, res) => {
     try {
-        const post = await Post.findById(req.params.id)
-            .populate('user', ['email', 'createdAt']);
-
-        if (!post) {
-            return res.status(404).json({ msg: 'Post bulunamadı.' });
-        }
+        const post = await Post.findById(req.params.id).populate('user', ['username', 'email']);
+        if(!post) return res.status(404).json({ msg: 'Bulunamadı' });
         res.json(post);
-    } catch (err) {
-        console.error(err.message);
-        // Hata ID formatından kaynaklanıyorsa (CastError)
-        if (err.kind === 'ObjectId') {
-             return res.status(404).json({ msg: 'Post bulunamadı.' });
-        }
-        res.status(500).send('Sunucu Hatası');
-    }
+    } catch (err) { res.status(500).send('Hata'); }
 });
 
 // @route   POST /api/posts/:id/comment
@@ -174,11 +151,12 @@ router.post('/:id/comment', protect, async (req, res) => {
 
         await newComment.save();
 
-        post.commentsCount = post.commentsCount + 1;  
+        post.commentsCount = post.commentsCount + 1;
+        await post.save();  
 
-        const commentToSend = await Comment.findById(newComment._id).populate('user', ['username', 'email']);
+       const comment = await Comment.findById(newComment._id).populate('user', ['username', 'email']);
+        res.json(comment);
 
-        res.json(commentToSend);
     } catch (err) {
         console.error(err.message);
         res.status(500).send('Sunucu Hatası');
@@ -191,15 +169,14 @@ router.post('/:id/comment', protect, async (req, res) => {
 router.get('/:id/comments', async (req, res) => {
     try {
         const comments = await Comment.find({ post: req.params.id })
-            .sort({ createdAt: -1 }) 
+            .sort({ createdAt: -1 })
             .populate('user', ['username', 'email']); 
-
         res.json(comments);
     } catch (err) {
-        console.error(err.message);
         res.status(500).send('Sunucu Hatası');
     }
 });
+
 
 // @route   DELETE /api/posts/comment/:id
 // @desc    Yorum sil (Sadece yorum sahibi veya post sahibi silebilir)
