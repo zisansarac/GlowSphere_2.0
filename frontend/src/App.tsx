@@ -279,15 +279,16 @@ const PostCard = ({
     initialIsFollowing?: boolean;
     onCommentClick?: () => void;
 }) => {
-    const { apiRequest} = useAuth();
+    const { apiRequest, displayAlert} = useAuth();
     
     // State'ler
     const [likesCount, setLikesCount] = useState(post.likesCount || 0);
     const [isLiked, setIsLiked] = useState(false); 
     const [isAnimating, setIsAnimating] = useState(false); 
-
-    // Takip State'i 
     const [isUserFollowing, setIsUserFollowing] = useState(initialIsFollowing || false);
+    const [isSaved, setIsSaved] = useState(false);
+
+   
     const isOwner = post.user?._id === currentUserId;
 
   useEffect(() => {
@@ -295,17 +296,22 @@ const PostCard = ({
         const checkLikeStatus = async () => {
             try {
              
-                const data = await apiRequest(`posts/is-liked/${post._id}`);
+                const [likeData, saveData] = await Promise.all([
+                    apiRequest(`posts/is-liked/${post._id}`),
+                    apiRequest(`posts/is-saved/${post._id}`)
+                ]);
+
                 if (isMounted) {
-                    setIsLiked(data.isLiked);
+                    setIsLiked(likeData.isLiked);
+                    setIsSaved(saveData.isSaved);
                 }
+
             } catch (error) {
                 console.error("Beğeni durumu kontrol edilemedi", error);
             }
         };
         
         checkLikeStatus();
-        
         return () => { isMounted = false; };
     }, [post._id, apiRequest]);
 
@@ -337,6 +343,25 @@ const PostCard = ({
             console.error("Beğeni hatası", error);
             setIsLiked(previousLiked);
             setLikesCount(previousCount);
+        }
+    };
+
+    const handleSaveToggle = async () => {
+        const previousSaved = isSaved;
+        setIsSaved(!previousSaved);
+
+        try {
+            const result = await apiRequest(`interact/save/${post._id}`, 'PUT');
+            if (result.action === 'save') {
+                setIsSaved(true);
+                displayAlert('Post kaydedildi.', 'success');
+            } else {
+                setIsSaved(false);
+                displayAlert('Post kaydedilenlerden çıkarıldı.', 'info');
+            }
+        } catch (error) {
+            setIsSaved(previousSaved);
+            displayAlert('İşlem başarısız.', 'error');
         }
     };
 
@@ -430,8 +455,12 @@ const PostCard = ({
                     </button> */}
                 </div>
                 
-                <button>
-                    <Bookmark className="w-6 h-6 text-gray-400 hover:text-[#A7C080] transition" />
+              <button onClick={handleSaveToggle}>
+                    <Bookmark 
+                        className={`w-6 h-6 transition-all duration-300 
+                            ${isSaved ? 'text-[#A7C080] fill-[#A7C080]' : 'text-gray-400 hover:text-[#A7C080]'}
+                        `} 
+                    />
                 </button>
             </div>
         </div>
@@ -1702,16 +1731,74 @@ const Explore = ({ setView, setSelectedUserId }: { setView: React.Dispatch<React
     );
 };
 
-// Simple Placeholder Page
-const PlaceholderPage = ({ title }: { title: string }) => (
-    <div className={`grow p-4 sm:p-8 lg:ml-64 bg-[${COLORS.BG_LIGHT}] min-h-screen pb-20 lg:pb-8 animate-fade-in`}>
-        <h1 className={`text-3xl font-extrabold text-[${COLORS.SECONDARY}] mb-8 border-b border-gray-300 pb-4`}>{title}</h1>
-        <div className={`p-10 bg-white rounded-xl shadow-xl text-center text-gray-500`}>
-            <p className="text-2xl font-semibold mb-2">GlowSphere - {title} Yapım Aşamasında</p>
-            <p>Bu bölüm geliştirme aşamasındadır, ancak back-end rotaları hazırdır!</p>
+// --- Saved Posts Page (KAYDEDİLENLER) ---
+const SavedPosts = ({ setView, setSelectedUserId }: { setView: React.Dispatch<React.SetStateAction<string>>, setSelectedUserId: React.Dispatch<React.SetStateAction<string | null>> }) => {
+    const { apiRequest, loading } = useAuth();
+    const [savedPosts, setSavedPosts] = useState<Post[]>([]);
+    const [fetching, setFetching] = useState(true);
+
+    useEffect(() => {
+        const fetchSaved = async () => {
+            try {
+                const data = await apiRequest('posts/saved/all');
+                setSavedPosts(data);
+            } catch (error) {
+                console.error("Kaydedilenler alınamadı", error);
+            } finally {
+                setFetching(false);
+            }
+        };
+        fetchSaved();
+    }, [apiRequest]);
+
+    const handleViewProfile = (userId: string) => {
+        setSelectedUserId(userId);
+        setView('publicProfile');
+    };
+
+    return (
+        <div className="w-full min-h-screen p-6 sm:p-10 lg:pl-80 transition-all duration-300">
+            <div className="max-w-[1600px] mx-auto animate-fade-in">
+                <h2 className="text-5xl font-extrabold text-[#383a42] mb-8 flex items-center">
+                    <Bookmark className="w-11 h-11 mr-3 mt-2 text-[#A7C080] fill-[#A7C080]" /> 
+                    Kaydedilenler
+                </h2>
+                
+                {fetching ? (
+                    <div className="flex justify-center py-20"><Loader2 className="animate-spin w-10 h-10 text-[#A7C080]" /></div>
+                ) : savedPosts.length === 0 ? (
+                    <div className="text-center py-20 opacity-50">
+                        <Bookmark className="w-16 h-16 mx-auto mb-4 text-gray-300" />
+                        <p className="text-gray-400 text-lg">Henüz kaydedilmiş bir gönderi yok.</p>
+                    </div>
+                ) : (
+                    <div className="columns-1 sm:columns-2 md:columns-3 lg:columns-4 gap-4 space-y-4">
+                        {savedPosts.map(post => (
+                            <div key={post._id} className="break-inside-avoid bg-white rounded-2xl shadow-md overflow-hidden hover:shadow-xl transition duration-300 cursor-pointer group">
+                                <div className="relative">
+                                    <img src={post.imageUrl} alt="Saved" className="w-full h-auto object-cover" />
+                                    <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition duration-300"></div>
+                                </div>
+                                <div className="p-4">
+                                    <p className="font-bold text-[#383a42] text-sm truncate">{post.caption}</p>
+                                    <div className="flex items-center justify-between mt-2">
+                                         <p 
+                                            onClick={(e) => { e.stopPropagation(); handleViewProfile(post.user._id); }}
+                                            className="text-xs text-gray-500 hover:text-[#A7C080] transition"
+                                         >
+                                            @{post.user?.username || 'User'}
+                                         </p>
+                                         <Bookmark className="w-4 h-4 text-[#A7C080] fill-[#A7C080]" />
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </div>
         </div>
-    </div>
-);
+    );
+};
 
 
 // Auth Form (Login/Register)
@@ -1914,7 +2001,8 @@ const AppContent = () => {
             case 'home': return <HomeFeed setView={setView} setSelectedUserId={setSelectedUserId} />;
             case 'createPost': return <CreatePost setView={setView} />;
             case 'explore': return <Explore setView={setView} setSelectedUserId={setSelectedUserId} />;
-            case 'saved': return <PlaceholderPage title="Kaydedilen Postlar" />;
+            case 'saved': 
+            return <SavedPosts setView={setView} setSelectedUserId={setSelectedUserId} />;
             case 'profile': return <MyProfile user={user} fetchUser={fetchUser} />;
             case 'publicProfile': return <PublicProfile selectedUserId={selectedUserId} setView={setView} />;
             case 'people': return <PeopleSearch setView={setView} setSelectedUserId={setSelectedUserId} />;

@@ -112,6 +112,24 @@ router.get('/all', async (req, res) => {
     }
 });
 
+// @route   GET /api/posts/saved/all
+// @desc    Kullanıcının kaydettiği postları getir
+// @access  Private
+router.get('/saved/all', protect, async (req, res) => {
+    try {
+        const currentUser = await User.findById(req.user.id);
+        
+        const savedPosts = await Post.find({ _id: { $in: currentUser.savedPosts } })
+            .sort({ createdAt: -1 })
+            .populate('user', ['username', 'email']);
+
+        res.json(savedPosts);
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).send('Sunucu Hatası');
+    }
+});
+
 router.get('/user/:userId', protect, async (req, res) => {
     try { 
         const posts = await Post.find({ user: req.params.userId }).sort({ createdAt: -1 });
@@ -252,6 +270,20 @@ router.get('/is-liked/:id', protect, async (req, res) => {
     } catch (err) {
         console.error(err.message);
         res.status(500).send('Sunucu Hatası');
+    }
+});
+
+// @route   GET /api/posts/is-saved/:id
+// @desc    Postun kaydedilip kaydedilmediğini kontrol et
+// @access  Private
+router.get('/is-saved/:id', protect, async (req, res) => {
+    try {
+        const user = await User.findById(req.user.id);
+
+        const isSaved = user.savedPosts.includes(req.params.id);
+        res.json({ isSaved });
+    } catch (err) {
+        res.status(500).send('Hata');
     }
 });
 

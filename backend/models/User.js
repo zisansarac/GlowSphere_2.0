@@ -31,6 +31,12 @@ const UserSchema = new mongoose.Schema({
         type: String,
         default: ''
     },
+    savedPosts: [
+        {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'Post' // Post modeline referans (ID'leri tutacağız)
+        }
+    ],
     createdAt: {
         type: Date,
         default: Date.now,

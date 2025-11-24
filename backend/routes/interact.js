@@ -87,4 +87,29 @@ router.put('/profile', protect, async (req, res) => {
     }
 });
 
+// @route   PUT /api/interact/save/:id
+// @desc    Postu Kaydet / Kaydedilenlerden Kaldır (Toggle)
+// @access  Private
+router.put('/save/:id', protect, async (req, res) => {
+    try {
+        const user = await User.findById(req.user.id);
+        const postId = req.params.id;
+
+        if (user.savedPosts.includes(postId)) {
+           
+            user.savedPosts = user.savedPosts.filter(id => id.toString() !== postId);
+            await user.save();
+            return res.json({ action: 'unsave', msg: 'Post kaydedilenlerden çıkarıldı.' });
+        } else {
+            // Yoksa -> Ekle (Save)
+            user.savedPosts.push(postId);
+            await user.save();
+            return res.json({ action: 'save', msg: 'Post kaydedildi!' });
+        }
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).send('İşlem hatası.');
+    }
+});
+
 module.exports = router;
