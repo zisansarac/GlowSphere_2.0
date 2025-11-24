@@ -510,7 +510,7 @@ const PostDetailModal = ({ post, currentUser, onClose, onCommentAdded }: { post:
                     </div>
 
                     {/* Yorum Listesi (Scrollable) */}
-                    <div className="flex-grow p-5 overflow-y-auto space-y-4 bg-gray-50">
+                    <div className="grow p-5 overflow-y-auto space-y-4 bg-gray-50">
                         {loadingComments ? (
                             <div className="flex justify-center mt-10"><Loader2 className="animate-spin text-[#A7C080]" /></div>
                         ) : comments.length === 0 ? (
@@ -548,7 +548,7 @@ const PostDetailModal = ({ post, currentUser, onClose, onCommentAdded }: { post:
                                 value={newComment}
                                 onChange={(e) => setNewComment(e.target.value)}
                                 placeholder="Yorum ekle..." 
-                                className="flex-grow text-black rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-[#A7C080]/50 transition text-sm"
+                                className="grow text-black rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-[#A7C080]/50 transition text-sm"
                             />
                             <button 
                                 type="submit" 
@@ -708,6 +708,115 @@ const TopCreators = ({ creators, setView, setSelectedUserId }: { creators: any[]
                         </button>
                     </div>
                 ))}
+            </div>
+        </div>
+    );
+};
+
+// --- PeopleSearch Page (REAL-TIME & DEBOUNCE) ---
+const PeopleSearch = ({ setView, setSelectedUserId }: { setView: React.Dispatch<React.SetStateAction<string>>, setSelectedUserId: React.Dispatch<React.SetStateAction<string | null>> }) => {
+    const { apiRequest } = useAuth();
+    const [query, setQuery] = useState('');
+    const [results, setResults] = useState<any[]>([]);
+    const [isSearching, setIsSearching] = useState(false);
+
+    useEffect(() => {
+  
+        if (!query.trim()) {
+            setResults([]);
+            setIsSearching(false);
+            return;
+        }
+
+        const delayDebounceFn = setTimeout(async () => {
+            setIsSearching(true);
+            try {
+                const data = await apiRequest(`users/search/${query}`);
+                setResults(data);
+            } catch (error) {
+                console.error("Arama hatası:", error);
+                setResults([]);
+            } finally {
+                setIsSearching(false);
+            }
+        }, 500); 
+
+        return () => clearTimeout(delayDebounceFn);
+        
+    }, [query, apiRequest]); 
+
+
+    const handleViewProfile = (userId: string) => {
+        setSelectedUserId(userId);
+        setView('publicProfile');
+    };
+
+ 
+    const handleFormSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+    };
+
+    return (
+        <div className="w-full min-h-screen p-6 sm:p-10 lg:pl-80 transition-all duration-300">
+            <div className="max-w-4xl mx-auto animate-fade-in">
+                
+                <h1 className="text-3xl font-extrabold text-[#383a42] mb-8">Kişileri Bul</h1>
+
+                {/* Arama Kutusu */}
+                <form onSubmit={handleFormSubmit} className="mb-10 relative">
+                    <input
+                        type="text"
+                        value={query}
+                        onChange={(e) => setQuery(e.target.value)}
+                        placeholder="Kullanıcı adı ara..."
+                        className="w-full bg-white border-2 border-transparent focus:border-[#A7C080] rounded-2xl py-4 pl-6 pr-14 text-lg shadow-sm outline-none transition font-medium text-[#383a42] placeholder-gray-400"
+                        autoFocus
+                    />
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2 p-2 text-[#A7C080]">
+                        {isSearching ? <Loader2 className="w-6 h-6 animate-spin" /> : <Users className="w-6 h-6" />}
+                    </div>
+                </form>
+
+                {/* Sonuçlar */}
+                <div className="space-y-4">
+                    {results.length > 0 ? (
+                        results.map((user) => (
+                            <div key={user._id} className="flex items-center justify-between bg-white p-4 rounded-2xl shadow-sm hover:shadow-md transition duration-300 border border-[#383a42]/5 animate-fade-in">
+                                <div className="flex items-center space-x-4">
+                                    <div className="w-12 h-12 rounded-full bg-[#383a42] flex items-center justify-center text-white font-bold text-lg shrink-0">
+                                        {user.email[0].toUpperCase()}
+                                    </div>
+                                    <div>
+                                        <p className="font-bold text-[#383a42] text-lg">@{user.username || user.email.split('@')[0]}</p>
+                                        <p className="text-sm text-gray-400">{user.bio ? user.bio.substring(0, 50) + '...' : 'GlowSphere Üyesi'}</p>
+                                    </div>
+                                </div>
+                                <button 
+                                    onClick={() => handleViewProfile(user._id)}
+                                    className="px-5 py-2 bg-[#F5F5EC] text-gray-100 font-bold rounded-xl hover:text-[#A7C080] transition text-sm whitespace-nowrap"
+                                >
+                                    Profili Gör
+                                </button>
+                            </div>
+                        ))
+                    ) : (
+                       
+                        !isSearching && query && (
+                            <div className="text-center py-10 text-gray-400">
+                                <p>Kullanıcı bulunamadı.</p>
+                            </div>
+                        )
+                    )}
+                    
+                    {/* Kutu boşsa gösterilecek varsayılan mesaj */}
+                    {!query && (
+                        <div className="text-center py-20 opacity-50">
+                            <Users className="w-16 h-16 mx-auto mb-4 text-gray-300" />
+                            <p className="text-gray-400 text-lg">Aramaya başlamak için bir isim yazın.</p>
+                        </div>
+                    )}
+                </div>
+
             </div>
         </div>
     );
@@ -1805,10 +1914,10 @@ const AppContent = () => {
             case 'home': return <HomeFeed setView={setView} setSelectedUserId={setSelectedUserId} />;
             case 'createPost': return <CreatePost setView={setView} />;
             case 'explore': return <Explore setView={setView} setSelectedUserId={setSelectedUserId} />;
-            case 'people': return <PlaceholderPage title="Kişileri Bul" />;
             case 'saved': return <PlaceholderPage title="Kaydedilen Postlar" />;
             case 'profile': return <MyProfile user={user} fetchUser={fetchUser} />;
             case 'publicProfile': return <PublicProfile selectedUserId={selectedUserId} setView={setView} />;
+            case 'people': return <PeopleSearch setView={setView} setSelectedUserId={setSelectedUserId} />;
             default: return <HomeFeed setView={setView} setSelectedUserId={setSelectedUserId} />;
         }
     };

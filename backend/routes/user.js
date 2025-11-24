@@ -39,4 +39,32 @@ router.get('/:id', async (req, res) => {
     }
 });
 
+// @route   GET /api/users/search/:query
+// @desc    Kullanıcı ara
+// @access  Public
+router.get('/search/:query', async (req, res) => {
+    try {
+        const keyword = req.params.query;
+        
+        console.log("--- ARAMA İSTEĞİ GELDİ ---");
+        console.log("Aranan Kelime:", keyword);
+
+        const regex = new RegExp(keyword, 'i'); 
+
+        const users = await User.find({
+            $or: [
+                { username: { $regex: regex } },
+                { email: { $regex: regex } }
+            ]
+        }).select('username email bio profileImage');
+
+        console.log(`Bulunan Kullanıcı Sayısı: ${users.length}`);
+
+        res.json(users);
+    } catch (err) {
+        console.error("Arama Hatası:", err.message);
+        res.status(500).send('Arama sırasında hata oluştu.');
+    }
+});
+
 module.exports = router;
