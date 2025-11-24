@@ -3,9 +3,15 @@ const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 
 const UserSchema = new mongoose.Schema({
+    username: { 
+        type: String, 
+        required: [true, 'Lütfen bir kullanıcı adı girin.'], 
+        unique: true, 
+        trim: true 
+    },
     email: {
         type: String,
-        required: [true, 'Lütfen bir e-posta adresi girin.'],
+        required: [true, 'Lütfen bir e-posta adresi girin'],
         unique: true, 
         lowercase: true,
         trim: true
@@ -15,6 +21,15 @@ const UserSchema = new mongoose.Schema({
         required: [true, 'Lütfen bir şifre girin.'],
         minlength: [6, 'Şifre en az 6 karakter olmalıdır.'],
         select: false 
+    },
+    bio: {
+        type: String,
+        maxlength: 150,
+        default: ''
+    },
+    profileImage: {
+        type: String,
+        default: ''
     },
     createdAt: {
         type: Date,

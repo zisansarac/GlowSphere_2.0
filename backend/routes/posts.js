@@ -3,6 +3,7 @@ const router = express.Router();
 const { protect } = require('../middleware/authMiddleware');
 const Post = require('../models/Post');
 const Like = require('../models/Like');
+const Comment = require('../models/Comment');
 
 
 // @route   POST /api/posts
@@ -153,6 +154,101 @@ router.get('/:id', async (req, res) => {
         if (err.kind === 'ObjectId') {
              return res.status(404).json({ msg: 'Post bulunamadı.' });
         }
+        res.status(500).send('Sunucu Hatası');
+    }
+});
+
+// @route   POST /api/posts/:id/comment
+// @desc    Bir posta yorum yap
+// @access  Private
+router.post('/:id/comment', protect, async (req, res) => {
+    try {
+        const post = await Post.findById(req.params.id);
+        if (!post) return res.status(404).json({ msg: 'Post bulunamadı' });
+
+        const newComment = new Comment({
+            text: req.body.text,
+            post: req.params.id,
+            user: req.user.id
+        });
+
+        await newComment.save();
+
+        post.commentsCount = post.commentsCount + 1;  
+
+        const commentToSend = await Comment.findById(newComment._id).populate('user', ['username', 'email']);
+
+        res.json(commentToSend);
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).send('Sunucu Hatası');
+    }
+});
+
+// @route   GET /api/posts/:id/comments
+// @desc    Bir postun tüm yorumlarını getir
+// @access  Public
+router.get('/:id/comments', async (req, res) => {
+    try {
+        const comments = await Comment.find({ post: req.params.id })
+            .sort({ createdAt: -1 }) 
+            .populate('user', ['username', 'email']); 
+
+        res.json(comments);
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).send('Sunucu Hatası');
+    }
+});
+
+// @route   DELETE /api/posts/comment/:id
+// @desc    Yorum sil (Sadece yorum sahibi veya post sahibi silebilir)
+// @access  Private
+router.delete('/comment/:id', protect, async (req, res) => {
+    try {
+        const comment = await Comment.findById(req.params.id);
+        if (!comment) return res.status(404).json({ msg: 'Yorum bulunamadı' });
+
+        if (comment.user.toString() !== req.user.id) {
+            return res.status(401).json({ msg: 'Yetkisiz işlem' });
+        }
+
+        await Comment.deleteOne({ _id: req.params.id });
+        res.json({ msg: 'Yorum silindi' });
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).send('Sunucu Hatası');
+    }
+});
+
+// @route   PUT /api/posts/like/:id
+// @desc    Postu Beğen / Beğenmekten Vazgeç (Toggle)
+// @access  Private
+router.put('/like/:id', protect, async (req, res) => {
+    try {
+        const post = await Post.findById(req.params.id);
+        if(!post) return res.status(404).json({ msg: 'Post bulunamadı' });
+
+        
+        const existingLike = await Like.findOne({ user: req.user.id, post: req.params.id });
+
+        if (existingLike) {
+ 
+            await Like.deleteOne({ _id: existingLike._id });
+            post.likesCount = Math.max(0, post.likesCount - 1);
+            await post.save();
+            return res.json({ action: 'unlike', likesCount: post.likesCount });
+        } else {
+
+            const newLike = new Like({ user: req.user.id, post: req.params.id });
+            await newLike.save();
+            post.likesCount += 1;
+            await post.save();
+            return res.json({ action: 'like', likesCount: post.likesCount });
+        }
+
+    } catch (err) {
+        console.error(err.message);
         res.status(500).send('Sunucu Hatası');
     }
 });
