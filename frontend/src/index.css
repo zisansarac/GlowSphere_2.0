@@ -36,9 +36,11 @@ body, html, #root {
 }
 
 h1 {
-  font-size: 5.2em;
+  font-size: 4.2em;
   line-height: 1.1;
 }
+
+
 
 button {
   border-radius: 8px;

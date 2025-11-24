@@ -105,6 +105,7 @@ const AuthProvider = ({ children }: { children: ReactNode }) => {
         localStorage.removeItem('token');
         localStorage.removeItem('user');
         localStorage.removeItem('currentView');
+        localStorage.removeItem('selectedUserId');
 
         setInitialLoading(false);
         displayAlert('Oturum sonlandırıldı.', 'info');
@@ -267,33 +268,34 @@ const NavItem = ({ Icon, name, isActive, onClick }: { Icon: any, name: string, i
 
 
 // Post Card Component 
-const PostCard = ({ post, currentUserId, onFollowToggle, onViewProfile, onPostUpdate }: { 
+const PostCard = ({ post, currentUserId, onFollowToggle, onViewProfile, onPostUpdate, initialIsFollowing }: { 
     post: Post; 
     currentUserId: string; 
     onFollowToggle: (id: string, isFollowing: boolean, setFollowing: React.Dispatch<React.SetStateAction<boolean>>) => void;
     onViewProfile: (id: string) => void;
     onPostUpdate: () => void;
+    initialIsFollowing?: boolean;
 }) => {
     const { apiRequest, displayAlert } = useAuth();
     
     // State'ler
     const [likesCount, setLikesCount] = useState(post.likesCount || 0);
-    const [isLiked, setIsLiked] = useState(false); // Başlangıçta false (Geliştirilebilir)
-    const [isAnimating, setIsAnimating] = useState(false); // Kalp animasyonu için
+    const [isLiked, setIsLiked] = useState(false); 
+    const [isAnimating, setIsAnimating] = useState(false); 
 
-    // Takip State'i (Basit simülasyon)
-    const [isUserFollowing, setIsUserFollowing] = useState(false); 
+    // Takip State'i 
+    const [isUserFollowing, setIsUserFollowing] = useState(initialIsFollowing || false);
     const isOwner = post.user?._id === currentUserId;
 
     // Beğeni İşlemi
     const handleLikeToggle = async () => {
-        // Animasyonu tetikle
+    
         setIsAnimating(true);
         setTimeout(() => setIsAnimating(false), 1000);
 
         try {
-            // Backend'e istek at
-            const result = await apiRequest(`posts/like/${post._id}`, 'PUT');
+           
+            const result = await apiRequest(`posts/like/${post._id}`, 'POST');
             
             if (result.action === 'like') {
                 setIsLiked(true);
@@ -311,7 +313,15 @@ const PostCard = ({ post, currentUserId, onFollowToggle, onViewProfile, onPostUp
         <div className={`bg-white p-4 sm:p-6 rounded-4xl shadow-sm mb-8 border border-[#383a42]/5 transition-all duration-300 hover:shadow-md animate-fade-in`}>
             {/* Header */}
             <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center cursor-pointer group" onClick={() => onViewProfile(post.user._id)}>
+                <div className="flex items-center cursor-pointer group" onClick={() => {
+    
+            const userId = post.user?._id;
+            if (userId) {
+                 onViewProfile(userId);
+              } else {
+        console.error("Hata: Bu postun kullanıcısı bulunamadı (ID yok).", post);
+         }
+   }}>
                     <div className={`w-12 h-12 rounded-full bg-[#383a42] flex items-center justify-center text-white font-bold text-lg mr-3 shadow-md group-hover:scale-105 transition`}>
                         {post.user?.email?.[0]?.toUpperCase() || 'U'}
                     </div>
@@ -329,7 +339,11 @@ const PostCard = ({ post, currentUserId, onFollowToggle, onViewProfile, onPostUp
                 {!isOwner && (
                     <button
                         onClick={() => onFollowToggle(post.user._id, isUserFollowing, setIsUserFollowing)}
-                        className="text-xs font-bold text-[#A7C080] hover:text-[#383a42] transition uppercase tracking-wider"
+                        className={`text-xs font-bold transition uppercase tracking-wider py-1 px-3 rounded-lg
+                            ${isUserFollowing 
+                                ? 'text-gray-400 bg-gray-100 hover:bg-gray-200' 
+                                : 'text-[#A7C080] hover:text-[#383a42]' 
+                            }`}
                     >
                         {isUserFollowing ? 'Takip Ediliyor' : 'Takip Et'}
                     </button>
@@ -543,18 +557,20 @@ const TopCreators = ({ creators, setView, setSelectedUserId }: { creators: any[]
 const HomeFeed = ({ setView, setSelectedUserId }: { setView: React.Dispatch<React.SetStateAction<string>>, setSelectedUserId: React.Dispatch<React.SetStateAction<string | null>> }) => {
     const { user, apiRequest, loading, displayAlert } = useAuth();
     const [feed, setFeed] = useState<Post[]>([]);
-    
-    // Simülasyon: Takip durumu
+    const [isFeedLoading, setIsFeedLoading] = useState(true);
     const [isUserFollowing, setIsUserFollowing] = useState(false); 
 
     const fetchFeed = useCallback(async () => {
+
+        if (!user) return;
+
         try {
             const data = await apiRequest('feed/home');
             setFeed(data);
         } catch (error) {
             console.error("Feed yüklenemedi:", error);
         }
-    }, [apiRequest]);
+    }, [apiRequest, user]);
 
     useEffect(() => {
         const loadFeed = async () => {
@@ -598,15 +614,13 @@ const HomeFeed = ({ setView, setSelectedUserId }: { setView: React.Dispatch<Reac
     }
 
    return (
-        // DÜZELTME: 
-        // lg:pl-80 -> Masaüstünde soldan 80 birim (Sidebar genişliği + boşluk) bırak.
-        // w-full -> Ekranı kapla.
+        
         <div className="w-full min-h-screen lg:pl-80 p-6 sm:p-10 transition-all duration-300">
             
             <div className="max-w-[1600px] mx-auto">
-                {/* Header - Artık Sidebar'ın altında kalmayacak */}
+            
                 <div className="mb-10 animate-fade-in pt-4 lg:pt-0">
-                    <h1 className="text-4xl font-extrabold text-[#383a42] mb-2 tracking-tight">Ana Akış</h1>
+                    <h1 className="text-3xl font-extrabold text-[#383a42] mb-2 tracking-tight">Ana Akış</h1>
                     <p className="text-gray-500 font-medium text-lg">GlowSphere'deki en yeni paylaşımları keşfet.</p>
                 </div>
                 
@@ -633,6 +647,7 @@ const HomeFeed = ({ setView, setSelectedUserId }: { setView: React.Dispatch<Reac
                                 onFollowToggle={handleFollowToggle}
                                 onViewProfile={onViewProfile}
                                 onPostUpdate={handlePostUpdate}
+                                initialIsFollowing={true}
                             />
                         ))}
                     </div>
@@ -1141,8 +1156,6 @@ const PublicProfile = ({ selectedUserId, setView }: { selectedUserId: string | n
     const [profileUser, setProfileUser] = useState<any>(null);
     const [userPosts, setUserPosts] = useState<Post[]>([]);
     const [loading, setLoading] = useState(true);
-    
-    // Modal ve Takip State'leri
     const [selectedPost, setSelectedPost] = useState<Post | null>(null);
     const [isFollowing, setIsFollowing] = useState(false);
     const [followLoading, setFollowLoading] = useState(false);
@@ -1153,16 +1166,18 @@ const PublicProfile = ({ selectedUserId, setView }: { selectedUserId: string | n
             if (!selectedUserId) return;
             setLoading(true);
             try {
-                // 1. Kullanıcı Bilgisi
+               
                 const userData = await apiRequest(`users/${selectedUserId}`);
                 setProfileUser(userData.user);
 
-                // 2. Postları
+               
                 const postsData = await apiRequest(`posts/user/${selectedUserId}`);
                 setUserPosts(postsData);
-
-                // NOT: Burada normalde "Ben bu kişiyi takip ediyor muyum?" kontrolü de yapılır.
-                // Şimdilik varsayılan olarak false başlıyor.
+              
+                if (user && user._id !== selectedUserId) {
+                    const followStatus = await apiRequest(`interact/is-following/${selectedUserId}`);
+                    setIsFollowing(followStatus.isFollowing);
+                }
                 
             } catch (error) {
                 console.error("Profil yüklenemedi:", error);
@@ -1174,7 +1189,7 @@ const PublicProfile = ({ selectedUserId, setView }: { selectedUserId: string | n
         };
 
         loadProfileData();
-    }, [selectedUserId, apiRequest, setView]);
+    }, [selectedUserId, apiRequest, setView, user]);
 
     // Takip Et / Bırak Fonksiyonu
     const handleFollow = async () => {
@@ -1184,11 +1199,14 @@ const PublicProfile = ({ selectedUserId, setView }: { selectedUserId: string | n
             const result = await apiRequest(`interact/follow/${profileUser._id}`, 'POST');
             
             if (result.action === 'follow') {
-                setIsFollowing(true);
-                displayAlert(`${profileUser.username} takip edildi!`, 'success');
+                setIsFollowing(true); // State'i güncelle
+                // undefined hatası çözümü: username yoksa email kullan
+                const nameToShow = profileUser.username || profileUser.email || 'Kullanıcı';
+                displayAlert(`${nameToShow} takip edildi!`, 'success');
             } else {
-                setIsFollowing(false);
-                displayAlert(`${profileUser.username} takipten çıkarıldı.`, 'info');
+                setIsFollowing(false); // State'i güncelle
+                const nameToShow = profileUser.username || profileUser.email || 'Kullanıcı';
+                displayAlert(`${nameToShow} takipten çıkarıldı.`, 'info');
             }
         } catch (error) {
             displayAlert("İşlem başarısız.", 'error');
@@ -1207,7 +1225,6 @@ const PublicProfile = ({ selectedUserId, setView }: { selectedUserId: string | n
 
     if (!profileUser) return null;
 
-    // Kendi profilin mi kontrolü?
     const isOwnProfile = user && user._id === profileUser._id;
 
     return (
@@ -1288,14 +1305,14 @@ const PublicProfile = ({ selectedUserId, setView }: { selectedUserId: string | n
                         
                         <p className="text-[#383a42]/80 italic max-w-lg mb-6">{profileUser.bio || "Bu kullanıcı henüz biyografi eklemedi."}</p>
                         
-                        {/* --- TAKİP ET BUTONU (KENDİ PROFİLİNSE GİZLE) --- */}
+                        {/* --- TAKİP ET BUTONU --- */}
                         {!isOwnProfile && (
                             <button 
                                 onClick={handleFollow}
                                 disabled={followLoading}
                                 className={`font-bold py-3 px-8 rounded-xl transition shadow-md transform hover:scale-105 flex items-center justify-center
                                     ${isFollowing 
-                                        ? 'bg-gray-200 text-[#383a42] hover:bg-gray-300' 
+                                        ? 'bg-gray-200 text-lime-200 hover:bg-gray-300' 
                                         : 'bg-[#383a42] text-white hover:bg-[#4a4d57]'
                                     }`}
                             >
@@ -1570,13 +1587,23 @@ const AppContent = () => {
         return localStorage.getItem('currentView') || 'home';
     });
     const [isRegister, setIsRegister] = useState(false);
-    const [selectedUserId, setSelectedUserId] = useState<string | null>(null); 
+    const [selectedUserId, setSelectedUserId] = useState<string | null>(() => {
+        return localStorage.getItem('selectedUserId');
+    });
 
     const toggleAuthMode = () => setIsRegister(prev => !prev);
 
     useEffect(() => {
         localStorage.setItem('currentView', view);
     }, [view]);
+
+    useEffect(() => {
+        if (selectedUserId) {
+            localStorage.setItem('selectedUserId', selectedUserId);
+        } else {
+            localStorage.removeItem('selectedUserId');
+        }
+    }, [selectedUserId]);
     
     // Loading Ekranı
     if (initialLoading) {

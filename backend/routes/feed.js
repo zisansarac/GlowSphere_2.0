@@ -4,20 +4,26 @@ const { protect } = require('../middleware/authMiddleware');
 const Post = require('../models/Post');
 const Follow = require('../models/Follow');
 
+
+// @access  Private
 // @route   GET /api/feed/home
-// @desc    Takip edilen kullanıcıların postlarını getirir (Home Feed)
+// @desc    Takip edilenlerin VE kendimin postlarını getir
 // @access  Private
 router.get('/home', protect, async (req, res) => {
     try {
-
+        // 1. Takip edilenleri bul
         const follows = await Follow.find({ follower: req.user.id }).select('following');
 
+        // 2. Sadece ID'leri bir diziye çıkar
         const followingUserIds = follows.map(follow => follow.following);
 
+        // 3. : Kendi ID'ni de bu listeye ekle 
+        followingUserIds.push(req.user.id);
+
+        // 4. Postları Bul
         const feedPosts = await Post.find({ user: { $in: followingUserIds } })
             .sort({ createdAt: -1 }) 
-            .limit(20) 
-            .populate('user', ['email', 'createdAt']); 
+            .populate('user', ['username', 'email', 'profileImage', 'createdAt']); 
 
         res.json(feedPosts);
 
