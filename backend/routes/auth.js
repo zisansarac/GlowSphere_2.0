@@ -15,35 +15,50 @@ const generateToken = (id) => {
 // @desc    Yeni kullanıcı kaydı
 // @access  Public
 router.post('/register', async (req, res) => {
-    const { email, password } = req.body;
+    const { username, email, password } = req.body;
+
+    if (!username || !email || !password) {
+        return res.status(400).json({ msg: 'Lütfen tüm alanları doldurun.' });
+    }
 
     try {
-        let user = await User.findOne({ email });
-
-        if (user) {
-            return res.status(400).json({ msg: 'Bu e-posta adresi zaten kullanımda.' });
+        let userExists = await User.findOne({ email });
+        if (userExists) {
+            return res.status(400).json({ msg: 'Bu e-posta adresi zaten kayıtlı.' });
         }
 
-   
-        user = new User({ email, password });
+       let usernameExists = await User.findOne({ username });
+        if (usernameExists) {
+            return res.status(400).json({ msg: 'Bu kullanıcı adı zaten alınmış.' });
+        }
 
-        await user.save();
-
-        const token = generateToken(user._id);
-
-        res.status(201).json({
-            token,
-            user: {
-                id: user._id,
-                email: user.email,
-            },
+        const user = await User.create({
+            username,
+            email,
+            password
         });
+
+       if (user) {
+            res.status(201).json({
+                token: generateToken(user._id),
+                user: {
+                    _id: user._id,
+                    username: user.username, // Cevaba username ekledik
+                    email: user.email,
+                    bio: user.bio,
+                    createdAt: user.createdAt
+                }
+            });
+        } else {
+            res.status(400).json({ msg: 'Geçersiz kullanıcı verisi.' });
+        }
 
     } catch (err) {
         console.error(err.message);
-        res.status(500).send('Sunucu Hatası');
+        res.status(500).send('Sunucu hatası.');
     }
 });
+
 
 
 // @route   POST /api/auth/login
@@ -56,29 +71,23 @@ router.post('/login', async (req, res) => {
 
         const user = await User.findOne({ email }).select('+password');
 
-        if (!user) {
-            return res.status(401).json({ msg: 'Geçersiz kimlik bilgileri.' });
+       if (user && (await user.matchPassword(password))) {
+            res.json({
+                token: generateToken(user._id),
+                user: {
+                    _id: user._id,
+                    username: user.username,
+                    email: user.email,
+                    bio: user.bio,
+                    createdAt: user.createdAt
+                }
+            });
+        } else {
+            res.status(401).json({ msg: 'Geçersiz e-posta veya şifre.' });
         }
-
-        const isMatch = await user.matchPassword(password);
-
-        if (!isMatch) {
-            return res.status(401).json({ msg: 'Geçersiz kimlik bilgileri.' });
-        }
-
-        const token = generateToken(user._id);
-
-        res.json({
-            token,
-            user: {
-                id: user._id,
-                email: user.email,
-            },
-        });
-
     } catch (err) {
         console.error(err.message);
-        res.status(500).send('Sunucu Hatası');
+        res.status(500).send('Sunucu hatası.');
     }
 });
 

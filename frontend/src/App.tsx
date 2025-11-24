@@ -26,7 +26,7 @@ interface User {
 
 interface Post {
     _id: string;
-    user: User; // Backend'den gelen kullanıcı bilgisi (populated)
+    user: User; 
     caption: string;
     imageUrl: string;
     tags: string[];
@@ -49,7 +49,7 @@ interface AuthContextType {
     alert: AlertState | null;
     apiRequest: (endpoint: string, method?: 'GET' | 'POST' | 'PUT' | 'DELETE', body?: any) => Promise<any>;
     login: (email: string, password: string) => Promise<void>;
-    register: (email: string, password: string) => Promise<void>;
+    register: (username:string, email: string, password: string) => Promise<void>;
     logout: () => void;
     fetchUser: () => Promise<void>;
     displayAlert: (msg: string, type?: 'error' | 'success' | 'info') => void;
@@ -66,7 +66,7 @@ const useAuth = () => {
 };
 
 const AuthProvider = ({ children }: { children: ReactNode }) => {
-    // 1. Kullanıcıyı LocalStorage'dan yükle
+    //  Kullanıcıyı LocalStorage'dan yükle
     const [user, setUser] = useState<User | null>(() => {
         try {
             const savedUser = localStorage.getItem('user');
@@ -78,8 +78,7 @@ const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     const [token, setToken] = useState<string | null>(localStorage.getItem('token') || null);
     
-    // Eğer user hafızada varsa loading FALSE başlar, böylece sayfa hemen açılır.
-    // Eğer token var ama user yoksa (nadir durum), loading TRUE başlar.
+ 
     const [initialLoading, setInitialLoading] = useState<boolean>(!user && !!token);
     
     const [loading, setLoading] = useState<boolean>(false);
@@ -145,7 +144,6 @@ const AuthProvider = ({ children }: { children: ReactNode }) => {
         }
     }, [token]);
 
-    // --- KRİTİK BÖLÜM: ARKA PLAN GÜNCELLEMESİ ---
     const fetchUser = useCallback(async () => {
         if (!token) {
             setInitialLoading(false);
@@ -157,37 +155,33 @@ const AuthProvider = ({ children }: { children: ReactNode }) => {
             const response = await fetch(`${API_BASE_URL}/users/profile`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
-            
-            // Eğer backend JSON dönmezse kod patlamasın diye önlem
+    
             const data = await response.json().catch(() => null);
 
             if (response.ok && data && data.user) {
                 console.log("Kullanıcı güncellendi:", data.user.email);
-                // Backend'den başarılı veri geldi, güncelle
+        
                 setUser(data.user);
             } else if (response.status === 401) {
-                // SADECE Token gerçekten geçersizse at
+             
                 console.warn("Token geçersiz (401), çıkış yapılıyor.");
                 logout();
             } else {
-                // Diğer durumlarda (500 hatası, veri yapısı bozuksa vs.)
-                // SAKIN user'ı null yapma! Eski veriyle devam et.
+         
                 console.warn("Sunucudan güncel veri alınamadı ama oturum korunuyor. Status:", response.status);
             }
         } catch (error) {
-            // İnternet yoksa veya sunucu kapalıysa buraya düşer.
-            // SAKIN logout yapma!
+    
             console.error("FetchUser hatası (Offline modda devam ediliyor):", error);
         } finally {
             setInitialLoading(false);
         }
     }, [token]);
 
-    // Mount olduğunda çalışır
+    
     useEffect(() => {
         if (token) {
-            // User zaten localStorage'da varsa, fetchUser'ı beklemeden akışı başlatabiliriz.
-            // Ama güncel veri için fetchUser'ı yine de çağırırız.
+     
             fetchUser();
         } else {
             setInitialLoading(false);
@@ -201,8 +195,8 @@ const AuthProvider = ({ children }: { children: ReactNode }) => {
         displayAlert('Giriş başarılı!', 'success');
     };
 
-    const register = async (email: string, password: string) => {
-        const data = await apiRequest('auth/register', 'POST', { email, password });
+    const register = async (username:string, email: string, password: string) => {
+        const data = await apiRequest('auth/register', 'POST', { username, email, password });
         setToken(data.token);
         setUser(data.user);
         displayAlert('Kayıt başarılı! Hoş geldiniz.', 'success');
@@ -272,138 +266,126 @@ const NavItem = ({ Icon, name, isActive, onClick }: { Icon: any, name: string, i
 );
 
 
-// Post Card Component
-const PostCard = ({ post, currentUserId, onFollowToggle, onViewProfile, onPostUpdate, isInitialLiked }: { 
+// Post Card Component 
+const PostCard = ({ post, currentUserId, onFollowToggle, onViewProfile, onPostUpdate }: { 
     post: Post; 
     currentUserId: string; 
     onFollowToggle: (id: string, isFollowing: boolean, setFollowing: React.Dispatch<React.SetStateAction<boolean>>) => void;
     onViewProfile: (id: string) => void;
     onPostUpdate: () => void;
-    isInitialLiked?: boolean;
 }) => {
     const { apiRequest, displayAlert } = useAuth();
-    const [isLiked, setIsLiked] = useState(isInitialLiked || false); 
-    const [likesCount, setLikesCount] = useState(post.likesCount || 0);
-    const [isSaving, setIsSaving] = useState(false);
-    const isOwner = post.user._id === currentUserId;
-
-    // Simülasyon: Takip durumu (gerçekte backend'den gelmeli)
-    const [isUserFollowing, setIsUserFollowing] = useState(false); 
-
     
+    // State'ler
+    const [likesCount, setLikesCount] = useState(post.likesCount || 0);
+    const [isLiked, setIsLiked] = useState(false); // Başlangıçta false (Geliştirilebilir)
+    const [isAnimating, setIsAnimating] = useState(false); // Kalp animasyonu için
+
+    // Takip State'i (Basit simülasyon)
+    const [isUserFollowing, setIsUserFollowing] = useState(false); 
+    const isOwner = post.user?._id === currentUserId;
+
+    // Beğeni İşlemi
     const handleLikeToggle = async () => {
-        if (isSaving) return;
-        setIsSaving(true);
+        // Animasyonu tetikle
+        setIsAnimating(true);
+        setTimeout(() => setIsAnimating(false), 1000);
+
         try {
-            const result = await apiRequest(`interact/like/${post._id}`, 'POST');
+            // Backend'e istek at
+            const result = await apiRequest(`posts/like/${post._id}`, 'PUT');
             
             if (result.action === 'like') {
                 setIsLiked(true);
                 setLikesCount(result.likesCount);
-                displayAlert('Post beğenildi!', 'success');
             } else {
                 setIsLiked(false);
                 setLikesCount(result.likesCount);
-                displayAlert('Beğeni kaldırıldı.', 'info');
             }
         } catch (error) {
-            displayAlert("Beğeni işlemi başarısız.", 'error');
-        } finally {
-            setIsSaving(false);
+            console.error("Beğeni hatası", error);
         }
     };
-    
-    const handleDelete = async () => {
-        if (window.confirm("Bu postu silmek istediğinizden emin misiniz?")) {
-            try {
-                await apiRequest(`posts/${post._id}`, 'DELETE');
-                displayAlert("Post başarıyla silindi.", 'success');
-                onPostUpdate(); // Feed/Profil yenile
-            } catch (error) {
-                displayAlert("Silme işlemi başarısız.", 'error');
-            }
-        }
-    }
-
 
     return (
-        <div className={`bg-white p-4 sm:p-6 rounded-3xl shadow-lg mb-8 border border-gray-100 transition-all duration-500 hover:shadow-xl hover:scale-[1.005] animate-fade-in`}>
+        <div className={`bg-white p-4 sm:p-6 rounded-4xl shadow-sm mb-8 border border-[#383a42]/5 transition-all duration-300 hover:shadow-md animate-fade-in`}>
             {/* Header */}
             <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center cursor-pointer group" onClick={() => onViewProfile(post.user._id)}>
-                    <div className={`w-10 h-10 rounded-full bg-[#383a42] flex items-center justify-center text-white font-bold text-lg mr-3 shadow-md group-hover:scale-110 transition`}>
+                    <div className={`w-12 h-12 rounded-full bg-[#383a42] flex items-center justify-center text-white font-bold text-lg mr-3 shadow-md group-hover:scale-105 transition`}>
                         {post.user?.email?.[0]?.toUpperCase() || 'U'}
                     </div>
                     <div>
-                        <p className={`font-semibold text-[${COLORS.SECONDARY}] cursor-pointer hover:text-[${COLORS.PRIMARY}]`} onClick={() => onViewProfile(post.user._id)}>{post.user?.email?.split('@')?.[0] || 'Bilinmeyen Kullanıcı'}</p>
-                        <p className="text-xs text-gray-500">{new Date(post.createdAt).toLocaleDateString()} • {post.location || 'GlowSphere'}</p>
+                        <p className={`font-bold text-[#383a42] group-hover:text-[#A7C080] transition`}>
+                            @{post.user?.username || post.user?.email?.split('@')?.[0] || 'Kullanıcı'}
+                        </p>
+                        <p className="text-xs text-gray-400 font-medium">
+                             {new Date(post.createdAt).toLocaleDateString()} • {post.user?.email}
+                        </p>
                     </div>
                 </div>
-                {/* Takip Etme veya Ayarlar */}
-                <div className="flex items-center space-x-2">
-                    {isOwner && (
-                        <button 
-                             onClick={handleDelete}
-                            className={`text-sm font-semibold py-1 px-3 rounded-lg transition duration-200 transform hover:scale-105 bg-red-100 text-red-600 hover:bg-red-200`}
-                        >
-                            Sil
-                        </button>
-                    )}
-                    {!isOwner && (
-                        <button
-                            onClick={() => onFollowToggle(post.user._id, isUserFollowing, setIsUserFollowing)}
-                            className={`text-sm font-semibold py-1 px-3 rounded-lg transition duration-200 transform hover:scale-105 ${isUserFollowing
-                                ? 'bg-gray-200 text-[#383a42] hover:bg-gray-300'
-                                : `bg-[${COLORS.PRIMARY}] text-white hover:bg-[#86a86c]`
-                            }`}
-                        >
-                            {isUserFollowing ? 'Takip Ediliyor' : 'Takip Et'}
-                        </button>
-                    )}
-                </div>
+                
+                {/* Takip Butonu (Kendi postun değilse) */}
+                {!isOwner && (
+                    <button
+                        onClick={() => onFollowToggle(post.user._id, isUserFollowing, setIsUserFollowing)}
+                        className="text-xs font-bold text-[#A7C080] hover:text-[#383a42] transition uppercase tracking-wider"
+                    >
+                        {isUserFollowing ? 'Takip Ediliyor' : 'Takip Et'}
+                    </button>
+                )}
             </div>
 
-            {/* Caption ve Tags */}
-            <p className={`text-[${COLORS.SECONDARY}] mb-3`}>{post.caption}</p>
-            <div className="flex flex-wrap gap-2 mb-4 text-sm">
+            {/* Caption */}
+            <p className="text-[#383a42] mb-3 leading-relaxed">{post.caption}</p>
+            
+            {/* Tags */}
+            <div className="flex flex-wrap gap-2 mb-4">
                 {(post.tags || []).map((tag, index) => (
-                    <span key={index} className={`text-[${COLORS.PRIMARY}] bg-[${COLORS.BG_DARK}]/50 px-2 py-1 rounded-full font-medium transition duration-200 hover:bg-[${COLORS.BG_DARK}] cursor-pointer`}>
+                    <span key={index} className="text-xs font-bold text-[#A7C080] bg-[#F5F5EC] px-2 py-1 rounded-lg">
                         #{tag}
                     </span>
                 ))}
             </div>
 
             {/* Media */}
-            <div className="aspect-4/3 w-full bg-gray-100 rounded-xl overflow-hidden shadow-inner">
+            <div className="aspect-square w-full bg-gray-100 rounded-2xl overflow-hidden shadow-inner mb-4 relative" onDoubleClick={handleLikeToggle}>
                 <img
-                    src={post.imageUrl || 'https://placehold.co/600x450/cccccc/383a42?text=Görsel+Yok'}
-                    alt="Post Görseli"
-                    className="w-full h-full object-cover transition duration-500 hover:scale-[1.05] ease-in-out"
-                    onError={(e: any) => e.target.src = 'https://placehold.co/600x450/cccccc/383a42?text=Görsel+Yüklenemedi'}
+                    src={post.imageUrl}
+                    alt="Post"
+                    className="w-full h-full object-cover"
                 />
+                {/* Çift tıklayınca çıkan büyük kalp */}
+                <Heart className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-24 h-24 text-white fill-white drop-shadow-lg transition-all duration-500 ${isAnimating ? 'opacity-100 scale-125' : 'opacity-0 scale-50'}`} />
             </div>
 
-            {/* Footer / Interactions */}
-            <div className="flex items-center justify-between mt-4">
-                <div className="flex items-center space-x-4">
-                    <button
+            {/* Actions */}
+            <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-6">
+                    {/* Like Button */}
+                    <button 
                         onClick={handleLikeToggle}
-                        disabled={isSaving}
-                        className={`flex items-center space-x-1 p-2 rounded-full transition duration-300 ${isLiked ? 'text-red-500 bg-red-100' : 'text-gray-500 hover:text-red-500 hover:bg-red-50'}`}
+                        className="flex items-center space-x-2 group"
                     >
-                        <Heart className={`w-6 h-6 ${isLiked ? 'fill-red-500 animate-bounce' : ''}`} />
-                        <span className="font-semibold text-sm">{likesCount}</span>
+                        <Heart 
+                            className={`w-7 h-7 transition-all duration-300 ${isLiked ? 'text-red-500 fill-red-500 scale-110' : 'text-[#383a42] group-hover:text-red-500'}`} 
+                        />
+                        <span className="font-bold text-[#383a42]">{likesCount}</span>
                     </button>
-                    <button className={`flex items-center space-x-1 p-2 rounded-full text-gray-500 hover:text-[${COLORS.PRIMARY}] hover:bg-[${COLORS.BG_DARK}]/50 transition duration-300`}>
-                        <MessageCircle className="w-6 h-6" />
-                        <span className="font-semibold text-sm">{post.commentsCount || 0}</span>
+
+                    {/* Comment Button (Sadece ikon) */}
+                    <button className="flex items-center space-x-2 group">
+                        <MessageCircle className="w-7 h-7 text-[#383a42] group-hover:text-[#A7C080] transition" />
+                        <span className="font-bold text-[#383a42]">{post.commentsCount}</span>
                     </button>
-                    <button className={`p-2 rounded-full text-gray-500 hover:text-[${COLORS.PRIMARY}] hover:bg-[${COLORS.BG_DARK}]/50 transition duration-300`}>
-                        <Send className="w-6 h-6" />
+
+                    <button className="flex items-center space-x-2 group">
+                        <Send className="w-6 h-6 text-[#383a42] group-hover:text-[#A7C080] transition transform -rotate-45 mb-1" />
                     </button>
                 </div>
-                <button className={`p-2 rounded-full text-gray-500 hover:text-[${COLORS.SECONDARY}] hover:bg-[${COLORS.BG_DARK}]/50 transition duration-300`}>
-                    <Bookmark className="w-6 h-6" />
+                
+                <button>
+                    <Bookmark className="w-6 h-6 text-[#383a42] hover:text-[#A7C080] transition" />
                 </button>
             </div>
         </div>
@@ -636,7 +618,7 @@ const HomeFeed = ({ setView, setSelectedUserId }: { setView: React.Dispatch<Reac
                         
                         {/* Empty State */}
                         {!loading && feed.length === 0 && (
-                            <div className="p-12 bg-white rounded-[2rem] text-center shadow-lg border-2 border-[#383a42]/5 animate-fade-in">
+                            <div className="p-12 bg-white rounded-4xl text-center shadow-lg border-2 border-[#383a42]/5 animate-fade-in">
                                 <p className="text-2xl font-bold mb-3 text-[#383a42]">Akışınızda Henüz Post Yok</p>
                                 <p className="text-gray-500">İçerik üreticilerini takip edin veya Keşfet bölümünü kontrol edin!</p>
                             </div>
@@ -656,7 +638,7 @@ const HomeFeed = ({ setView, setSelectedUserId }: { setView: React.Dispatch<Reac
                     </div>
 
                     {/* Sağ: Top Creators */}
-                    <div className="hidden xl:block w-96 flex-shrink-0 sticky top-10">
+                    <div className="hidden xl:block w-96 shrink-0 sticky top-10">
                         <TopCreators creators={mockCreators} setView={setView} setSelectedUserId={setSelectedUserId} />
                     </div>
                 </div>
@@ -762,7 +744,7 @@ const CreatePost = ({ setView }: { setView: React.Dispatch<React.SetStateAction<
                 
                 <h1 className="text-3xl font-extrabold text-[#383a42] mb-8 border-b border-gray-200 pb-4">Yeni Post Oluştur</h1>
                 
-                <form onSubmit={handleSubmit} className="bg-white p-8 rounded-[2rem] shadow-xl space-y-8 border border-[#383a42]/5">
+                <form onSubmit={handleSubmit} className="bg-white p-8 rounded-4xl shadow-xl space-y-8 border border-[#383a42]/5">
                     
                     {/* --- RESİM YÜKLEME ALANI --- */}
                     <div className="space-y-4">
@@ -950,13 +932,13 @@ const MyProfile = ({ user, fetchUser }: { user: User, fetchUser: () => Promise<v
             
             {/* --- POST DETAY MODALI --- */}
             {selectedPost && (
-                <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
+                <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
                     {/* Kapatma Butonu */}
                     <button onClick={closePostDetail} className="absolute top-5 right-5 text-white hover:text-red-400 transition">
                         <X className="w-5 h-5" />
                     </button>
 
-                    <div className="bg-white w-full max-w-5xl h-[80vh] rounded-[2rem] overflow-hidden flex flex-col md:flex-row shadow-2xl relative" onClick={(e) => e.stopPropagation()}>
+                    <div className="bg-white w-full max-w-5xl h-[80vh] rounded-4xl overflow-hidden flex flex-col md:flex-row shadow-2xl relative" onClick={(e) => e.stopPropagation()}>
                         
                         {/* Sol: Resim Alanı */}
                         <div className="w-full md:w-3/5 h-1/2 md:h-full bg-black flex items-center justify-center">
@@ -998,7 +980,7 @@ const MyProfile = ({ user, fetchUser }: { user: User, fetchUser: () => Promise<v
                             </div>
 
                             {/* İçerik: Açıklama ve Yorumlar */}
-                            <div className="flex-grow p-6 overflow-y-auto">
+                            <div className="grow p-6 overflow-y-auto">
                                 {isEditingPost ? (
                                     <div className="space-y-4">
                                         <label className="text-sm font-bold text-gray-700">Açıklamayı Düzenle</label>
@@ -1041,12 +1023,12 @@ const MyProfile = ({ user, fetchUser }: { user: User, fetchUser: () => Promise<v
             <div className="max-w-4xl mx-auto space-y-8 animate-fade-in">
                 
                 {/* 1. Profil Kartı */}
-                <div className="bg-white rounded-[2rem] p-8 shadow-lg border border-[#383a42]/5 flex flex-col md:flex-row items-center md:items-start gap-8">
+                <div className="bg-white rounded-4xl p-8 shadow-lg border border-[#383a42]/5 flex flex-col md:flex-row items-center md:items-start gap-8">
                     <div className="w-32 h-32 rounded-full bg-[#383a42] flex items-center justify-center text-white font-extrabold text-5xl shadow-2xl shrink-0">
                         {user.email[0].toUpperCase()}
                     </div>
 
-                    <div className="flex-grow text-center md:text-left">
+                    <div className="grow text-center md:text-left">
                         <h2 className="text-3xl font-extrabold text-[#383a42]">@{username}</h2>
                         <p className="text-gray-500 font-medium mb-4">{user.email}</p>
                         
@@ -1233,13 +1215,13 @@ const PublicProfile = ({ selectedUserId, setView }: { selectedUserId: string | n
             
             {/* --- DETAY MODALI (SADECE GÖRÜNTÜLEME) --- */}
             {selectedPost && (
-                <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in" onClick={() => setSelectedPost(null)}>
+                <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in" onClick={() => setSelectedPost(null)}>
                      {/* Kapat Butonu */}
                      <button className="absolute top-5 right-5 text-white hover:text-red-400 transition">
                         <X className="w-10 h-10" />
                     </button>
 
-                    <div className="bg-white w-full max-w-5xl h-[80vh] rounded-[2rem] overflow-hidden flex flex-col md:flex-row shadow-2xl relative" onClick={(e) => e.stopPropagation()}>
+                    <div className="bg-white w-full max-w-5xl h-[80vh] rounded-4xl overflow-hidden flex flex-col md:flex-row shadow-2xl relative" onClick={(e) => e.stopPropagation()}>
                         {/* Sol: Resim */}
                         <div className="w-full md:w-3/5 h-1/2 md:h-full bg-black flex items-center justify-center">
                             <img src={selectedPost.imageUrl} alt="Detay" className="max-w-full max-h-full object-contain" />
@@ -1259,7 +1241,7 @@ const PublicProfile = ({ selectedUserId, setView }: { selectedUserId: string | n
                             </div>
 
                             {/* İçerik */}
-                            <div className="flex-grow p-6 overflow-y-auto">
+                            <div className="grow p-6 overflow-y-auto">
                                 <p className="text-[#383a42] text-lg leading-relaxed mb-4">{selectedPost.caption}</p>
                                 <div className="flex flex-wrap gap-2 mb-6">
                                     {selectedPost.tags?.map((tag, i) => (
@@ -1284,12 +1266,12 @@ const PublicProfile = ({ selectedUserId, setView }: { selectedUserId: string | n
                 </button>
 
                 {/* Profil Kartı */}
-                <div className="bg-white rounded-[2rem] p-8 shadow-lg border border-[#383a42]/5 flex flex-col md:flex-row items-center md:items-start gap-8">
+                <div className="bg-white rounded-4xl p-8 shadow-lg border border-[#383a42]/5 flex flex-col md:flex-row items-center md:items-start gap-8">
                     <div className="w-32 h-32 rounded-full bg-[#383a42] flex items-center justify-center text-white font-extrabold text-5xl shadow-xl shrink-0">
                         {profileUser.email[0].toUpperCase()}
                     </div>
 
-                    <div className="flex-grow text-center md:text-left">
+                    <div className="grow text-center md:text-left">
                         <h2 className="text-3xl font-extrabold text-[#383a42]">@{profileUser.username || profileUser.email.split('@')[0]}</h2>
                         <p className="text-gray-500 font-medium mb-4">{profileUser.email}</p>
 
@@ -1428,6 +1410,7 @@ const PlaceholderPage = ({ title }: { title: string }) => (
 // Auth Form (Login/Register)
 const AuthForm = ({ isRegister, toggleAuthMode }: { isRegister: boolean, toggleAuthMode: () => void }) => {
     const { login, register, loading } = useAuth();
+    const [username, setUsername] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
@@ -1437,7 +1420,7 @@ const AuthForm = ({ isRegister, toggleAuthMode }: { isRegister: boolean, toggleA
         setError('');
         try {
             if (isRegister) {
-                await register(email, password); 
+                await register(username, email, password); 
             } else {
                 await login(email, password);
             }
@@ -1471,6 +1454,21 @@ const AuthForm = ({ isRegister, toggleAuthMode }: { isRegister: boolean, toggleA
 
                     {/* Form */}
                     <form onSubmit={handleSubmit} className="space-y-5">
+                        {/* --- YENİ: KULLANICI ADI INPUTU (Sadece Kayıt Olurken Görünür) --- */}
+                        {isRegister && (
+                            <div className="space-y-1.5 animate-fade-in">
+                                <label className="text-sm font-bold text-[#383a42] ml-1 mb-2">Kullanıcı Adı</label>
+                                <input
+                                    type="text"
+                                    value={username}
+                                    onChange={(e) => setUsername(e.target.value)}
+                                    placeholder="kullaniciadi"
+                                    className="w-full bg-[#F5F5EC] border-2 border-transparent focus:border-[#A7C080] text-[#383a42] rounded-xl p-3.5 outline-none transition-all shadow-sm placeholder-gray-400 font-medium"
+                                    required
+                                />
+                            </div>
+                        )}
+
                         <div className="space-y-1.5">
                             <label className="text-sm font-bold text-[#383a42] ml-1 mb-2">E-posta</label>
                             <input
@@ -1614,7 +1612,7 @@ const AppContent = () => {
             <MobileBottomBar view={view} setView={setView} />
             
             {/* İçerik alanı */}
-            <div className="flex-grow w-full">
+            <div className="grow w-full">
                  {renderView()}
             </div>
             <GlobalAlert />
