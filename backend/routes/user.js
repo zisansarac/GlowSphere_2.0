@@ -13,6 +13,7 @@ router.get('/profile', protect, (req, res) => {
             email: req.user.email,
             username: req.user.username,
             bio: req.user.bio,
+            profileImage: req.user.profileImage,
             createdAt: req.user.createdAt
         }
     });

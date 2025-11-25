@@ -61,13 +61,17 @@ router.get('/is-following/:id', protect, async (req, res) => {
 });
 
 // @route   PUT /api/interact/profile
-// @desc    Profil bilgilerini güncelle
+// @desc    Profil bilgilerini güncelle (Bio, Username, ProfileImage)
 // @access  Private
 router.put('/profile', protect, async (req, res) => {
-    const { bio, username } = req.body; 
+ 
+    const { bio, username, profileImage } = req.body; 
+    
     const fieldsToUpdate = {};
     if (bio) fieldsToUpdate.bio = bio;
     if (username) fieldsToUpdate.username = username;
+    
+    if (profileImage) fieldsToUpdate.profileImage = profileImage; 
 
     try {
         const user = await User.findByIdAndUpdate(

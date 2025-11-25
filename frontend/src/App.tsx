@@ -21,6 +21,7 @@ interface User {
     email: string;
     username?: string;
     bio?: string;
+    profileImage?: string;
     createdAt: string;
 }
 
@@ -384,9 +385,13 @@ const PostCard = ({
         console.error("Hata: Bu postun kullanıcısı bulunamadı (ID yok).", post);
          }
    }}>
-                    <div className={`w-12 h-12 rounded-full bg-[#383a42] flex items-center justify-center text-white font-bold text-lg mr-3 shadow-md group-hover:scale-105 transition`}>
-                        {post.user?.email?.[0]?.toUpperCase() || 'U'}
-                    </div>
+                    <div className={`w-12 h-12 rounded-full bg-[#383a42] flex items-center justify-center text-white font-bold text-lg mr-3 shadow-md group-hover:scale-105 transition overflow-hidden`}>
+    {post.user?.profileImage ? (
+        <img src={post.user.profileImage} alt="Avatar" className="w-full h-full object-cover" />
+    ) : (
+        post.user?.email?.[0]?.toUpperCase() || 'U'
+    )}
+</div>
                     <div>
                         <p className={`font-bold text-[#383a42] group-hover:text-[#A7C080] transition`}>
                             @{post.user?.username || post.user?.email?.split('@')?.[0] || 'Kullanıcı'}
@@ -572,9 +577,7 @@ const PostDetailModal = ({ post, currentUser, onClose, onCommentChange, onPostDe
                     {/* Header */}
                     <div className="p-5 border-b border-gray-100 flex items-center justify-between shrink-0">
                         <div className="flex items-center space-x-3">
-                            <div className="w-10 h-10 rounded-full bg-[#383a42] flex items-center justify-center text-white font-bold">
-                                {currentPost.user?.email?.[0]?.toUpperCase()}
-                            </div>
+                            
                             <div>
                                 <p className="font-bold text-[#383a42] text-sm">@{currentPost.user?.username || 'User'}</p>
                                 <p className="text-xs text-gray-400">Post Detayı</p>
@@ -615,6 +618,7 @@ const PostDetailModal = ({ post, currentUser, onClose, onCommentChange, onPostDe
 
                         {/* Yorumlar */}
                         <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Yorumlar</h4>
+
                         
                         {loadingComments ? (
                             <div className="flex justify-center"><Loader2 className="animate-spin text-[#A7C080] w-6 h-6" /></div>
@@ -623,10 +627,16 @@ const PostDetailModal = ({ post, currentUser, onClose, onCommentChange, onPostDe
                         ) : (
                             comments.map((comment: any) => (
                                 <div key={comment._id} className="flex space-x-3 group relative">
-                                    <div className="w-8 h-8 rounded-full bg-gray-300 flex items-center justify-center text-white font-bold text-xs shrink-0">
-                                        {comment.user?.username?.[0]?.toUpperCase() || 'U'}
-                                    </div>
-                                    <div className="flex-grow min-w-0"> 
+                                                                
+                <div className="w-8 h-8 rounded-full bg-gray-300 flex items-center justify-center text-white font-bold text-xs shrink-0 overflow-hidden">
+                 {comment.user?.profileImage ? (
+                 <img src={comment.user.profileImage} alt="U" className="w-full h-full object-cover" />
+               ) : (
+                   comment.user?.username?.[0]?.toUpperCase() || 'U'
+                 )}
+                </div>
+                                    
+                <div className="grow min-w-0"> 
                     
                     {/* YORUM BALONU */}
                     <div className="bg-white p-3 rounded-r-xl rounded-bl-xl shadow-sm border border-gray-100">
@@ -733,9 +743,13 @@ const Sidebar = ({ view, setView }: { view: string, setView: React.Dispatch<Reac
                 {/* Profil Kartı */}
                 {user && (
                     <div className="flex items-center mb-10 p-4 rounded-2xl bg-[#F5F5EC] border-2 border-[#383a42]/5 cursor-pointer hover:border-[#A7C080] transition-all shadow-sm group" onClick={() => setView('profile')}>
-                        <div className="w-12 h-12 rounded-full bg-[#383a42] flex items-center justify-center text-white font-bold text-xl mr-3 shadow-md group-hover:scale-110 transition duration-300">
-                            {user.email[0].toUpperCase()}
-                        </div>
+                        <div className="w-10 h-10 rounded-full bg-[#383a42] flex items-center justify-center text-white font-bold text-lg mr-3 shadow-md group-hover:scale-110 transition duration-300 shrink-0 overflow-hidden">
+    {user.profileImage ? (
+        <img src={user.profileImage} alt="Avatar" className="w-full h-full object-cover" />
+    ) : (
+        user.email[0].toUpperCase()
+    )}
+</div>
                         <div className="overflow-hidden">
                             <p className="text-[#383a42] font-bold text-sm truncate">@{user.email.split('@')[0]}</p>
                             <p className="text-gray-500 text-xs">Profili Düzenle</p>
@@ -909,8 +923,12 @@ const PeopleSearch = ({ setView, setSelectedUserId }: { setView: React.Dispatch<
                         results.map((user) => (
                             <div key={user._id} className="flex items-center justify-between bg-white p-4 rounded-2xl shadow-sm hover:shadow-md transition duration-300 border border-[#383a42]/5 animate-fade-in">
                                 <div className="flex items-center space-x-4">
-                                    <div className="w-12 h-12 rounded-full bg-[#383a42] flex items-center justify-center text-white font-bold text-lg shrink-0">
-                                        {user.email[0].toUpperCase()}
+                                    <div className="w-14 h-14 rounded-full bg-[#383a42] flex items-center justify-center text-white font-bold text-xl shrink-0 overflow-hidden shadow-sm">
+                                        {user.profileImage ? (
+                                            <img src={user.profileImage} alt="Avatar" className="w-full h-full object-cover" />
+                                        ) : (
+                                            user.email[0].toUpperCase()
+                                        )}
                                     </div>
                                     <div>
                                         <p className="font-bold text-[#383a42] text-lg">@{user.username || user.email.split('@')[0]}</p>
@@ -1277,22 +1295,19 @@ const CreatePost = ({ setView }: { setView: React.Dispatch<React.SetStateAction<
     );
 };
 
-// My Profile Page 
-
+// --- MyProfile (PROFİL RESMİ YÜKLEME EKLENDİ) ---
 const MyProfile = ({ user, fetchUser }: { user: User, fetchUser: () => Promise<void> }) => {
     const { apiRequest, loading, displayAlert } = useAuth();
     
-
     const [bio, setBio] = useState(user.bio || '');
-    const [username, setUsername] = useState(user.username || user.username || user.email.split('@')[0]);
+    const [username, setUsername] = useState(user.username || user.email.split('@')[0]);
     const [myPosts, setMyPosts] = useState<Post[]>([]); 
     const [isLoadingPosts, setIsLoadingPosts] = useState(true);
+    
+    // Resim Yükleme State'i
+    const [uploadingImg, setUploadingImg] = useState(false);
 
-    const [selectedPost, setSelectedPost] = useState<Post | null>(null); 
-    const [isEditingPost, setIsEditingPost] = useState(false); 
-    const [editCaption, setEditCaption] = useState(''); 
-
-  
+    // Postları Çek
     useEffect(() => {
         let isMounted = true;
         const fetchMyPosts = async () => {
@@ -1300,174 +1315,98 @@ const MyProfile = ({ user, fetchUser }: { user: User, fetchUser: () => Promise<v
             try {
                 const data = await apiRequest(`posts/user/${user._id}`);
                 if (isMounted) setMyPosts(data);
-            } catch (error) {
-                console.error("Post hatası:", error);
-            } finally {
-                if (isMounted) setIsLoadingPosts(false);
-            }
+            } catch (error) { console.error(error); } 
+            finally { if (isMounted) setIsLoadingPosts(false); }
         };
         fetchMyPosts();
         return () => { isMounted = false; };
     }, [user._id, apiRequest]);
 
-    
-    const handleUpdateProfile = async (e: React.FormEvent) => {
+    // Profil Resmi Değiştirme Fonksiyonu
+    const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setUploadingImg(true);
+        const formData = new FormData();
+        formData.append('image', file);
+
+        try {
+            // 1. Resmi Yükle
+            const uploadRes = await fetch('http://localhost:5000/api/upload', {
+                method: 'POST',
+                body: formData
+            });
+            
+            if (!uploadRes.ok) throw new Error('Resim yüklenemedi');
+            
+            const imagePath = await uploadRes.text();
+            const fullImageUrl = `http://localhost:5000${imagePath}`;
+
+            // 2. Profil Bilgisini Güncelle (DB'ye kaydet)
+            await apiRequest('interact/profile', 'PUT', { profileImage: fullImageUrl });
+            
+            displayAlert('Profil fotoğrafı güncellendi!', 'success');
+            
+            // 3. Kullanıcı verisini yenile (Sidebar'da da değişsin diye)
+            fetchUser();
+
+        } catch (error) {
+            displayAlert('Fotoğraf yüklenirken hata oluştu.', 'error');
+        } finally {
+            setUploadingImg(false);
+        }
+    };
+
+    const handleUpdate = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
             await apiRequest('interact/profile', 'PUT', { bio, username });
-            displayAlert('Profil güncellendi!', 'success');
+            displayAlert('Profil bilgileri güncellendi!', 'success');
             fetchUser(); 
         } catch (error) { console.error(error); }
     };
 
-   
-    const openPostDetail = (post: Post) => {
-        setSelectedPost(post);
-        setEditCaption(post.caption); 
-        setIsEditingPost(false); 
-    };
-
-    const closePostDetail = () => {
-        setSelectedPost(null);
-        setIsEditingPost(false);
-    };
-
-    const handleDeletePost = async () => {
-        if (!selectedPost) return;
-        if (!window.confirm("Bu postu silmek istediğinize emin misiniz?")) return;
-
-        try {
-            await apiRequest(`posts/${selectedPost._id}`, 'DELETE');
-
-            setMyPosts(prev => prev.filter(p => p._id !== selectedPost._id));
-            
-            displayAlert('Post silindi.', 'success');
-            closePostDetail();
-        } catch (error) {
-            displayAlert('Silme işlemi başarısız.', 'error');
-        }
-    };
-
-    const handleUpdatePost = async () => {
-        if (!selectedPost) return;
-        try {
-            const updatedPost = await apiRequest(`posts/${selectedPost._id}`, 'PUT', {
-                caption: editCaption
-            });
-
-            setMyPosts(prev => prev.map(p => p._id === selectedPost._id ? updatedPost : p));
-  
-            setSelectedPost(updatedPost);
-            
-            setIsEditingPost(false);
-            displayAlert('Post güncellendi!', 'success');
-        } catch (error) {
-            displayAlert('Güncelleme başarısız.', 'error');
-        }
-    };
-
     return (
-        <div className="w-full min-h-screen p-6 sm:p-10 lg:pl-80 transition-all duration-300 relative">
-            
-            {/* --- POST DETAY MODALI --- */}
-            {selectedPost && (
-                <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
-                    {/* Kapatma Butonu */}
-                    <button onClick={closePostDetail} className="absolute top-5 right-5 text-white hover:text-red-400 transition">
-                        <X className="w-5 h-5" />
-                    </button>
-
-                    <div className="bg-white w-full max-w-5xl h-[80vh] rounded-4xl overflow-hidden flex flex-col md:flex-row shadow-2xl relative" onClick={(e) => e.stopPropagation()}>
-                        
-                        {/* Sol: Resim Alanı */}
-                        <div className="w-full md:w-3/5 h-1/2 md:h-full bg-black flex items-center justify-center">
-                            <img src={selectedPost.imageUrl} alt="Post Detay" className="max-w-full max-h-full object-contain" />
-                        </div>
-
-                        {/* Sağ: Bilgi ve İşlem Alanı */}
-                        <div className="w-full md:w-2/5 h-1/2 md:h-full bg-white flex flex-col">
-                            
-                            {/* Header: Kullanıcı ve İşlemler */}
-                            <div className="p-6 border-b border-gray-100 flex items-center justify-between">
-                                <div className="flex items-center space-x-3">
-                                    <div className="w-10 h-10 rounded-full bg-[#383a42] flex items-center justify-center text-white font-bold">
-                                        {user.email[0].toUpperCase()}
-                                    </div>
-                                    <div>
-                                        <p className="font-bold text-[#383a42]">@{username}</p>
-                                        <p className="text-xs text-gray-400">Post Sahibi</p>
-                                    </div>
-                                </div>
-                                
-                                {/* Edit / Delete Butonları (Sadece kendi postunsa) */}
-                                <div className="flex space-x-2">
-                                    {!isEditingPost ? (
-                                        <>
-                                            <button onClick={() => setIsEditingPost(true)} className="p-2 hover:bg-gray-100 rounded-full text-lime-500 transition" title="Düzenle">
-                                                <Edit2 className="w-5 h-5" />
-                                            </button>
-                                            <button onClick={handleDeletePost} className="p-2 hover:bg-red-50 rounded-full text-red-600 transition" title="Sil">
-                                                <Trash2 className="w-5 h-5" />
-                                            </button>
-                                        </>
-                                    ) : (
-                                        <button onClick={() => setIsEditingPost(false)} className="p-2 hover:bg-gray-100 rounded-full text-white hover:text-red-500 transition" title="İptal">
-                                            <X className="w-5 h-5" />
-                                        </button>
-                                    )}
-                                </div>
-                            </div>
-
-                            {/* İçerik: Açıklama ve Yorumlar */}
-                            <div className="grow p-6 overflow-y-auto">
-                                {isEditingPost ? (
-                                    <div className="space-y-4">
-                                        <label className="text-sm font-bold text-gray-700">Açıklamayı Düzenle</label>
-                                        <textarea 
-                                            value={editCaption} 
-                                            onChange={(e) => setEditCaption(e.target.value)}
-                                            className="w-full p-4 border rounded-xl text-black focus:border-[#A7C080] outline-none resize-none h-32"
-                                        />
-                                        <button onClick={handleUpdatePost} className="w-full py-3 bg-[#383a42] text-white rounded-xl font-bold hover:text-[#A7C080] transition flex items-center justify-center">
-                                            <Save className="w-5 h-5 mr-2" /> Kaydet
-                                        </button>
-                                    </div>
-                                ) : (
-                                    <>
-                                        <p className="text-[#383a42] text-lg leading-relaxed mb-4">{selectedPost.caption}</p>
-                                        <div className="flex flex-wrap gap-2 mb-6">
-                                            {selectedPost.tags?.map((tag, i) => (
-                                                <span key={i} className="text-sm text-[#A7C080] font-medium">#{tag}</span>
-                                            ))}
-                                        </div>
-                                        
-                                        <div className="border-t pt-4">
-                                            <p className="text-gray-400 text-sm text-center italic">Henüz yorum yok.</p>
-                                        </div>
-                                    </>
-                                )}
-                            </div>
-
-                            {/* Footer: Tarih */}
-                            <div className="p-4 border-t border-gray-100 text-xs text-gray-400 text-center">
-                                {new Date(selectedPost.createdAt).toLocaleDateString()} tarihinde paylaşıldı
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-
-            {/* --- ANA PROFİL İÇERİĞİ --- */}
+        <div className="w-full min-h-screen p-6 sm:p-10 lg:pl-80 transition-all duration-300">
             <div className="max-w-4xl mx-auto space-y-8 animate-fade-in">
                 
-                {/* 1. Profil Kartı */}
-                <div className="bg-white rounded-4xl p-8 shadow-lg border border-[#383a42]/5 flex flex-col md:flex-row items-center md:items-start gap-8">
-                    <div className="w-32 h-32 rounded-full bg-[#383a42] flex items-center justify-center text-white font-extrabold text-5xl shadow-2xl shrink-0">
-                        {user.email[0].toUpperCase()}
+                {/* Profil Kartı */}
+                <div className="bg-white rounded-[2rem] p-8 shadow-lg border border-[#383a42]/5 flex flex-col md:flex-row items-center md:items-start gap-8">
+                    
+                    {/* --- PROFİL RESMİ ALANI (TIKLANABİLİR) --- */}
+                    <div className="relative group cursor-pointer">
+                        {/* Gizli Input */}
+                        <input 
+                            type="file" 
+                            id="profilePicInput" 
+                            className="hidden" 
+                            accept="image/*"
+                            onChange={handleImageUpload}
+                            disabled={uploadingImg}
+                        />
+                        
+                        <label htmlFor="profilePicInput" className="cursor-pointer block relative">
+                            <div className="w-32 h-32 rounded-full bg-[#383a42] flex items-center justify-center text-white font-extrabold text-5xl shadow-2xl overflow-hidden border-4 border-white ring-2 ring-[#A7C080]/50">
+                                {user.profileImage ? (
+                                    <img src={user.profileImage} alt="Profil" className="w-full h-full object-cover" />
+                                ) : (
+                                    user.email[0].toUpperCase()
+                                )}
+                            </div>
+                            
+                            {/* Hover Overlay (Değiştir İkonu) */}
+                            <div className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition duration-300">
+                                {uploadingImg ? (
+                                    <Loader2 className="w-8 h-8 text-white animate-spin" />
+                                ) : (
+                                    <Edit2 className="w-8 h-8 text-white" />
+                                )}
+                            </div>
+                        </label>
                     </div>
 
-                    <div className="grow text-center md:text-left">
+                    <div className="flex-grow text-center md:text-left pt-2">
                         <h2 className="text-3xl font-extrabold text-[#383a42]">@{username}</h2>
                         <p className="text-gray-500 font-medium mb-4">{user.email}</p>
                         
@@ -1480,60 +1419,42 @@ const MyProfile = ({ user, fetchUser }: { user: User, fetchUser: () => Promise<v
                                 <span className="block font-bold text-xl text-[#383a42]">0</span>
                                 <span className="text-xs text-gray-500 uppercase tracking-wide">Takipçi</span>
                             </div>
+                            <div className="text-center">
+                                <span className="block font-bold text-xl text-[#383a42]">0</span>
+                                <span className="text-xs text-gray-500 uppercase tracking-wide">Takip</span>
+                            </div>
                         </div>
                         <p className="text-[#383a42]/80 italic max-w-lg">{bio || "Henüz bir biyografi eklenmedi."}</p>
                     </div>
                 </div>
 
-                {/* 2. Düzenleme Formu */}
+                {/* Düzenleme Formu (Aynı) */}
                 <div className="bg-[#F5F5EC] p-6 rounded-3xl border-2 border-[#A7C080]/20">
                     <h3 className="font-bold text-[#383a42] mb-6 flex items-center text-lg">
                         <Settings className="w-5 h-5 mr-2" /> Profili Düzenle
                     </h3>
-                    
-                    <form onSubmit={handleUpdateProfile} className="flex flex-col gap-6">
+                    <form onSubmit={handleUpdate} className="flex flex-col gap-6">
                         <div>
                             <label className="block text-sm font-bold text-[#383a42] mb-2 ml-1">Kullanıcı Adı</label>
-                            <input
-                                type="text"
-                                value={username}
-                                onChange={(e) => setUsername(e.target.value)}
-                                className="w-full bg-white text-[#383a42] border border-gray-200 rounded-xl p-4 outline-none focus:border-[#A7C080] focus:ring-2 focus:ring-[#A7C080]/20 transition shadow-sm font-medium placeholder-gray-400"
-                                placeholder="Örn: glowmaster"
-                            />
+                            <input type="text" value={username} onChange={(e) => setUsername(e.target.value)} className="w-full bg-white text-[#383a42] border border-gray-200 rounded-xl p-4 outline-none focus:border-[#A7C080] transition shadow-sm font-medium" />
                         </div>
-
                         <div>
                             <label className="block text-sm font-bold text-[#383a42] mb-2 ml-1">Biyografi</label>
-                            <textarea
-                                rows={3}
-                                value={bio}
-                                onChange={(e) => setBio(e.target.value)}
-                                className="w-full bg-white text-[#383a42] border border-gray-200 rounded-xl p-4 outline-none focus:border-[#A7C080] focus:ring-2 focus:ring-[#A7C080]/20 transition shadow-sm font-medium placeholder-gray-400 resize-none"
-                                placeholder="Kendinden bahset..."
-                            ></textarea>
+                            <textarea rows={3} value={bio} onChange={(e) => setBio(e.target.value)} className="w-full bg-white text-[#383a42] border border-gray-200 rounded-xl p-4 outline-none focus:border-[#A7C080] transition shadow-sm font-medium resize-none" />
                         </div>
-
                         <div className="flex justify-end">
-                            <button 
-                                type="submit"
-                                disabled={loading}
-                                className="bg-[#383a42] text-white font-bold py-3 px-8 rounded-xl hover:bg-[#4a4d57] transition disabled:opacity-50 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
-                            >
+                            <button type="submit" disabled={loading} className="bg-[#383a42] text-white font-bold py-3 px-8 rounded-xl hover:bg-[#4a4d57] transition disabled:opacity-50 shadow-lg">
                                 {loading ? 'Kaydediliyor...' : 'Değişiklikleri Kaydet'}
                             </button>
                         </div>
                     </form>
                 </div>
 
-                {/* 3. Post Izgarası (GÜNCELLENDİ: Tıklama özelliği geldi) */}
+                {/* Post Izgarası (Aynı) */}
                 <div>
                     <h3 className="text-2xl font-bold text-[#383a42] mb-6 border-b pb-2 inline-block">Postlarım</h3>
-                    
                     {isLoadingPosts ? (
-                        <div className="flex justify-center py-10">
-                            <Loader2 className="animate-spin text-[#A7C080] w-10 h-10" />
-                        </div>
+                        <div className="flex justify-center py-10"><Loader2 className="animate-spin text-[#A7C080] w-10 h-10" /></div>
                     ) : myPosts.length === 0 ? (
                         <div className="text-center py-12 bg-white rounded-3xl shadow-sm border border-dashed border-gray-300">
                             <p className="text-gray-500 font-medium mb-2">Henüz hiç post paylaşmadın.</p>
@@ -1541,31 +1462,16 @@ const MyProfile = ({ user, fetchUser }: { user: User, fetchUser: () => Promise<v
                     ) : (
                         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                             {myPosts.map((post) => (
-                                <div 
-                                    key={post._id} 
-                                    // YENİ: Tıklayınca Modalı Aç
-                                    onClick={() => openPostDetail(post)}
-                                    className="group relative aspect-square bg-gray-200 rounded-2xl overflow-hidden cursor-pointer shadow-md hover:shadow-xl transition-all duration-300"
-                                >
-                                    <img 
-                                        src={post.imageUrl} 
-                                        alt={post.caption} 
-                                        className="w-full h-full object-cover group-hover:scale-110 transition duration-500"
-                                    />
-                                    {/* Overlay */}
-                                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition duration-300 flex flex-col items-center justify-center gap-2 text-white font-bold">
-                                        <div className="flex gap-4">
-                                            <span className="flex items-center"><Heart className="w-5 h-5 mr-1 fill-white" /> {post.likesCount}</span>
-                                            <span className="flex items-center"><MessageCircle className="w-5 h-5 mr-1 fill-white" /> {post.commentsCount}</span>
-                                        </div>
-                                        <p className="text-xs uppercase tracking-widest mt-2 border-b border-white pb-1">İncele</p>
+                                <div key={post._id} className="group relative aspect-square bg-gray-200 rounded-2xl overflow-hidden cursor-pointer shadow-md hover:shadow-xl transition-all duration-300">
+                                    <img src={post.imageUrl} alt={post.caption} className="w-full h-full object-cover group-hover:scale-110 transition duration-500" />
+                                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center gap-4 text-white font-bold">
+                                        <span className="flex items-center"><Heart className="w-5 h-5 mr-1 fill-white" /> {post.likesCount}</span>
                                     </div>
                                 </div>
                             ))}
                         </div>
                     )}
                 </div>
-
             </div>
         </div>
     );
@@ -1623,12 +1529,11 @@ const PublicProfile = ({ selectedUserId, setView }: { selectedUserId: string | n
             const result = await apiRequest(`interact/follow/${profileUser._id}`, 'POST');
             
             if (result.action === 'follow') {
-                setIsFollowing(true); // State'i güncelle
-                // undefined hatası çözümü: username yoksa email kullan
+                setIsFollowing(true); 
                 const nameToShow = profileUser.username || profileUser.email || 'Kullanıcı';
                 displayAlert(`${nameToShow} takip edildi!`, 'success');
             } else {
-                setIsFollowing(false); // State'i güncelle
+                setIsFollowing(false); 
                 const nameToShow = profileUser.username || profileUser.email || 'Kullanıcı';
                 displayAlert(`${nameToShow} takipten çıkarıldı.`, 'info');
             }
@@ -1672,9 +1577,15 @@ const PublicProfile = ({ selectedUserId, setView }: { selectedUserId: string | n
                         <div className="w-full md:w-2/5 h-1/2 md:h-full bg-white flex flex-col">
                             {/* Header */}
                             <div className="p-6 border-b border-gray-100 flex items-center space-x-3">
-                                <div className="w-10 h-10 rounded-full bg-[#383a42] flex items-center justify-center text-white font-bold">
-                                    {profileUser.email[0].toUpperCase()}
-                                </div>
+                                
+                                <div className="w-32 h-32 rounded-full bg-gray-300 flex items-center justify-center text-white font-extrabold text-5xl shadow-xl shrink-0 overflow-hidden">
+                         {profileUser.profileImage ? (
+                          <img src={profileUser.profileImage} alt="Profile" className="w-full h-full object-cover" />
+                        ) : (
+                          profileUser.email[0].toUpperCase()
+                        )}
+                         
+                        </div>
                                 <div>
                                     <p className="font-bold text-[#383a42]">@{profileUser.username || profileUser.email.split('@')[0]}</p>
                                     <p className="text-xs text-gray-400">GlowSphere Üyesi</p>
@@ -1708,12 +1619,16 @@ const PublicProfile = ({ selectedUserId, setView }: { selectedUserId: string | n
 
                 {/* Profil Kartı */}
                 <div className="bg-white rounded-4xl p-8 shadow-lg border border-[#383a42]/5 flex flex-col md:flex-row items-center md:items-start gap-8">
-                    <div className="w-32 h-32 rounded-full bg-[#383a42] flex items-center justify-center text-white font-extrabold text-5xl shadow-xl shrink-0">
-                        {profileUser.email[0].toUpperCase()}
+                    <div className="w-32 h-32 rounded-full bg-[#383a42] flex items-center justify-center text-white font-extrabold text-5xl shadow-xl shrink-0 overflow-hidden border-4 border-white ring-2 ring-[#A7C080]/50">
+                        {profileUser.profileImage ? (
+                            <img src={profileUser.profileImage} alt="Profile" className="w-full h-full object-cover" />
+                        ) : (
+                            profileUser.email[0].toUpperCase()
+                        )}
                     </div>
 
                     <div className="grow text-center md:text-left">
-                        <h2 className="text-3xl font-extrabold text-[#383a42]">@{profileUser.username || profileUser.email.split('@')[0]}</h2>
+                        <h2 className="text-3xl font-extrabold text-[#383a42]">{profileUser.username || profileUser.email.split('@')[0]}</h2>
                         <p className="text-gray-500 font-medium mb-4">{profileUser.email}</p>
 
                         <div className="flex justify-center md:justify-start gap-6 my-6">

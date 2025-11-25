@@ -41,10 +41,13 @@ const upload = multer({
 // @desc    Resim yükle
 // @access  Public (veya Private yapabilirsin)
 
+// backend/routes/upload.js en alt kısım:
+
 router.post('/', upload.single('image'), (req, res) => {
     try {
-  
-        res.send(`/${req.file.path.replace(/\\/g, "/")}`); 
+
+        const normalizedPath = req.file.path.replace(/\\/g, "/");
+        res.send(`/${normalizedPath}`); 
     } catch (error) {
         res.status(400).send('Resim yüklenirken hata oluştu.');
     }
