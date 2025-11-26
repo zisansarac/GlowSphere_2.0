@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Heart, MessageCircle, Send, Bookmark } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import type { Post } from '../types';
+import { formatTimeAgo } from '../utils/dateUtils';
 
 interface PostCardProps {
     post: Post;
@@ -110,11 +111,11 @@ const PostCard = ({
                         )}
                     </div>
                     <div>
-                        <p className={`font-bold text-[#383a42] group-hover:text-[#A7C080] transition`}>
+                        <p className={`font-bold text-lg text-[#383a42] group-hover:text-[#A7C080] transition`}>
                             @{post.user?.username || post.user?.email?.split('@')?.[0] || 'Kullanıcı'}
                         </p>
-                        <p className="text-xs text-gray-400 font-medium">
-                             {new Date(post.createdAt).toLocaleDateString()} • {post.user?.email}
+                        <p className="text-s text-gray-500 font-medium">
+                             {formatTimeAgo(post.createdAt)}
                         </p>
                     </div>
                 </div>
