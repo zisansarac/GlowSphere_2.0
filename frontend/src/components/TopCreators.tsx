@@ -6,6 +6,7 @@ interface Creator {
     name: string;
     handle: string;
     initials: string;
+    profileImage?: string;
 }
 
 interface TopCreatorsProps {
@@ -27,17 +28,22 @@ const TopCreators = ({ creators, setView, setSelectedUserId }: TopCreatorsProps)
                 {creators.slice(0, 3).map((c, index) => (
                     <div key={index} className="flex items-center justify-between p-3 bg-white/60 backdrop-blur-md rounded-2xl shadow-sm transition duration-300 hover:shadow-md transform hover:scale-[1.02]">
                         <div className="flex items-center">
-                            <div className={`w-10 h-10 rounded-full bg-[${COLORS.PRIMARY}] flex items-center justify-center text-[#383a42] font-extrabold text-lg mr-3 shadow-sm`}>
-                                {c.initials}
-                            </div>
-                            <div>
-                                <p className="font-bold text-[#383a42] text-sm">{c.name}</p>
-                                <p className="text-xs text-gray-600 font-medium">@{c.handle}</p>
+                            <div className={`w-10 h-10 rounded-full bg-[#383a42] flex items-center justify-center text-white font-extrabold text-lg mr-3 shadow-sm overflow-hidden`}>
+                           {c.profileImage ? (
+                            <img src={c.profileImage} alt="Avatar" className="w-full h-full object-cover" />
+                                ) : (
+                                 c.initials
+                               )}
+                        </div>
+                            <div className="min-w-0">
+                                <p className="font-bold text-[#383a42] text-sm truncate">{c.name}</p>
+                                <p className="text-xs text-gray-600 font-medium truncate">@{c.handle}</p>
                             </div>
                         </div>
+                        
                         <button
                             onClick={() => handleCheckProfile(c.id)}
-                            className={`text-xs font-bold bg-[${COLORS.PRIMARY}] text-[#383a42] py-2 px-3 rounded-xl hover:bg-[#95ad72] transition duration-200 shadow-sm`}
+                            className={`ml-5 mr-5 text-xs font-bold bg-[${COLORS.PRIMARY}] text-white py-1.5 px-1 rounded-lg hover:text-[${COLORS.PRIMARY}] transition duration-200 shadow-sm whitespace-nowrap`}
                         >
                             Profili Gör
                         </button>

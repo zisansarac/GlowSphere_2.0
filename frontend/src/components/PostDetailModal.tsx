@@ -40,7 +40,7 @@ const PostDetailModal = ({
     // Beğeni State'leri
     const [isLiked, setIsLiked] = useState(false);
     const [likesCount, setLikesCount] = useState(post.likesCount || 0);
-    const [isAnimating, setIsAnimating] = useState(false); // Çift tık animasyonu için
+    const [isAnimating, setIsAnimating] = useState(false); 
 
     const isPostOwner = currentPost.user?._id === currentUser._id;
 
@@ -66,13 +66,12 @@ const PostDetailModal = ({
         checkLikeStatus();
     }, [post._id, apiRequest]);
 
-    // --- BEĞENİ FONKSİYONU ---
+  
     const handleLikeToggle = async () => {
         // Animasyonu başlat
         setIsAnimating(true);
         setTimeout(() => setIsAnimating(false), 1000);
 
-        // Optimistic UI (Anında tepki)
         const previousLiked = isLiked;
         
         setIsLiked(!previousLiked);
@@ -89,13 +88,13 @@ const PostDetailModal = ({
                 setLikesCount(result.likesCount);
             }
 
-            // Arka plandaki listeyi de güncelle
+          
             if (onPostUpdated) onPostUpdated();
 
         } catch (error) {
-            // Hata olursa geri al
+         
             setIsLiked(previousLiked);
-            setLikesCount(post.likesCount); // Eski sayıya dön
+            setLikesCount(post.likesCount); 
             console.error("Beğeni hatası", error);
         }
     };
@@ -145,15 +144,15 @@ const PostDetailModal = ({
     };
 
     return (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in" onClick={onClose}>
+        <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in" onClick={onClose}>
             
-            <button onClick={onClose} className="fixed top-6 right-6 z-[70] bg-black/50 p-2 rounded-full text-white hover:bg-white hover:text-black transition duration-300 shadow-lg">
+            <button onClick={onClose} className="fixed top-6 right-6 z-70 bg-black/50 p-2 rounded-full text-white hover:bg-white hover:text-black transition duration-300 shadow-lg">
                 <X className="w-8 h-8" />
             </button>
 
-            <div className="bg-white w-full max-w-6xl h-[85vh] rounded-[2rem] overflow-hidden flex flex-col md:flex-row shadow-2xl relative" onClick={(e) => e.stopPropagation()}>
+            <div className="bg-white w-full max-w-6xl h-[85vh] rounded-4xl overflow-hidden flex flex-col md:flex-row shadow-2xl relative" onClick={(e) => e.stopPropagation()}>
                 
-                {/* SOL: Resim (Çift Tıklama ile Beğeni) */}
+                {/* SOL: Resim */}
                 <div 
                     className="w-full md:w-[60%] h-1/2 md:h-full bg-black flex items-center justify-center relative cursor-pointer" 
                     onDoubleClick={handleLikeToggle} 
@@ -188,7 +187,7 @@ const PostDetailModal = ({
                         {isEditing && <button onClick={() => setIsEditing(false)} className="p-2 hover:bg-gray-100 rounded-full text-gray-500"><X className="w-4 h-4" /></button>}
                     </div>
 
-                    <div className="flex-grow p-5 overflow-y-auto space-y-4 bg-gray-50">
+                    <div className="grow p-5 overflow-y-auto space-y-4 bg-gray-50">
                         {isEditing ? (
                             <div className="space-y-2">
                                 <textarea value={editCaption} onChange={(e) => setEditCaption(e.target.value)} className={`w-full p-2 border rounded-lg outline-none focus:border-[${COLORS.PRIMARY}] text-sm`} rows={3} />
@@ -214,10 +213,10 @@ const PostDetailModal = ({
                                             comment.user?.username?.[0]?.toUpperCase() || 'U'
                                         )}
                                     </div>
-                                    <div className="flex-grow min-w-0">
+                                    <div className="grow min-w-0">
                                         <div className="bg-white p-3 rounded-r-xl rounded-bl-xl shadow-sm border border-gray-100">
                                             <div className="flex justify-between items-start gap-2">
-                                                <div className="break-words w-full">
+                                                <div className="wrap-break-word w-full">
                                                     <span className="text-xs font-bold text-[#383a42] mr-2 block sm:inline">
                                                         {comment.user?.username || 'Anonim'}
                                                     </span>
@@ -259,7 +258,7 @@ const PostDetailModal = ({
                         </div>
 
                         <form onSubmit={handleSubmitComment} className="flex items-center gap-2">
-                            <input type="text" value={newComment} onChange={(e) => setNewComment(e.target.value)} placeholder="Yorum ekle..." className={`flex-grow text-gray-600 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-[${COLORS.PRIMARY}]/50 transition text-sm`} />
+                            <input type="text" value={newComment} onChange={(e) => setNewComment(e.target.value)} placeholder="Yorum ekle..." className={`grow text-gray-600 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-[${COLORS.PRIMARY}]/50 transition text-sm`} />
                             <button type="submit" disabled={submitting || !newComment.trim()} className={`text-[${COLORS.PRIMARY}] font-bold text-sm hover:text-[#383a42] disabled:opacity-50 px-2 transition`}><Send className="w-5 h-5 transform -rotate-45" /></button>
                         </form>
                     </div>

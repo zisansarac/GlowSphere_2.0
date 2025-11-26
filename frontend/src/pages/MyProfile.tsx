@@ -98,7 +98,7 @@ const MyProfile = () => {
                 />
             )}
 
-            <div className="max-w-4xl mx-auto space-y-8 animate-fade-in">
+            <div className="max-w-6xl mx-auto space-y-8 animate-fade-in">
                 <div className={`bg-white rounded-4xl p-8 shadow-lg border border-[${COLORS.SECONDARY}]/5 flex flex-col md:flex-row items-center md:items-start gap-8`}>
                     
                     <div className="relative group cursor-pointer">
@@ -133,19 +133,22 @@ const MyProfile = () => {
                         <p className="text-gray-500 font-medium mb-4">{user.email}</p>
                         
                         <div className="flex justify-center md:justify-start gap-6 mb-6">
-                            <div className="text-center">
-                                <span className={`block font-bold text-xl text-[${COLORS.SECONDARY}]`}>{myPosts.length}</span>
-                                <span className="text-xs text-gray-500 uppercase tracking-wide">Post</span>
-                            </div>
-                            <div className="text-center">
-                                <span className={`block font-bold text-xl text-[${COLORS.SECONDARY}]`}>0</span>
-                                <span className="text-xs text-gray-500 uppercase tracking-wide">Takipçi</span>
-                            </div>
-                            <div className="text-center">
-                                <span className={`block font-bold text-xl text-[${COLORS.SECONDARY}]`}>0</span>
-                                <span className="text-xs text-gray-500 uppercase tracking-wide">Takip</span>
-                            </div>
-                        </div>
+                      <div className="text-center">
+                        <span className={`block font-bold text-xl text-[${COLORS.SECONDARY}]`}>{myPosts.length}</span>
+                        <span className="text-xs text-gray-500 uppercase tracking-wide">Post</span>
+                     </div>
+                    <div className="text-center">
+     
+        <span className={`block font-bold text-xl text-[${COLORS.SECONDARY}]`}>{user.followersCount || 0}</span>
+        <span className="text-xs text-gray-500 uppercase tracking-wide">Takipçi</span>
+    </div>
+    <div className="text-center">
+       
+        <span className={`block font-bold text-xl text-[${COLORS.SECONDARY}]`}>{user.followingCount || 0}</span>
+        <span className="text-xs text-gray-500 uppercase tracking-wide">Takip</span>
+    </div>
+</div>
+
                         <p className={`text-[${COLORS.SECONDARY}]/80 italic max-w-lg`}>{bio || "Henüz bir biyografi eklenmedi."}</p>
                     </div>
                 </div>

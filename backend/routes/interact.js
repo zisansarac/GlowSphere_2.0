@@ -5,13 +5,12 @@ const { protect } = require('../middleware/authMiddleware');
 const Follow = require('../models/Follow');
 const User = require('../models/User');
 
-
 // @route   POST /api/interact/follow/:targetUserId
-// @desc    Kullanıcıyı takip et / takibi bırak (toggle)
+// @desc    Kullanıcıyı takip et / takibi bırak 
 // @access  Private
 router.post('/follow/:targetUserId', protect, async (req, res) => {
-    const followerId = req.user.id; // Takip eden (Biz)
-    const followingId = req.params.targetUserId; // Takip edilen (Hedef)
+    const followerId = req.user.id; 
+    const followingId = req.params.targetUserId;
 
     if (followerId === followingId) {
         return res.status(400).json({ msg: 'Kendinizi takip edemezsiniz.' });
@@ -19,27 +18,40 @@ router.post('/follow/:targetUserId', protect, async (req, res) => {
     
     try {
         const targetUser = await User.findById(followingId);
-        if (!targetUser) {
-            return res.status(404).json({ msg: 'Takip edilecek kullanıcı bulunamadı.' });
-        }
+        if (!targetUser) return res.status(404).json({ msg: 'Kullanıcı bulunamadı.' });
 
-       
         const existingFollow = await Follow.findOne({ follower: followerId, following: followingId });
 
         if (existingFollow) {
-          
+     
             await Follow.deleteOne({ _id: existingFollow._id });
-            return res.json({ action: 'unfollow', msg: `${targetUser.username || targetUser.email} takipten çıkarıldı.` });
+
+            await User.findByIdAndUpdate(followerId, { $inc: { followingCount: -1 } });
+            await User.findByIdAndUpdate(followingId, { $inc: { followersCount: -1 } });
+
+            await User.updateMany(
+                { _id: { $in: [followerId, followingId] }, $or: [{ followingCount: { $lt: 0 } }, { followersCount: { $lt: 0 } }] },
+                { $set: { followingCount: 0, followersCount: 0 } } 
+            );
+           
+            await User.updateOne({ _id: followerId, followingCount: { $lt: 0 } }, { $set: { followingCount: 0 } });
+            await User.updateOne({ _id: followingId, followersCount: { $lt: 0 } }, { $set: { followersCount: 0 } });
+            
+
+            return res.json({ action: 'unfollow', msg: `${targetUser.username} takipten çıkarıldı.` });
         } else {
-       
             const newFollow = new Follow({ follower: followerId, following: followingId });
             await newFollow.save();
-            return res.json({ action: 'follow', msg: `${targetUser.username || targetUser.email} takip edildi!` });
+
+            await User.findByIdAndUpdate(followerId, { $inc: { followingCount: 1 } });
+            await User.findByIdAndUpdate(followingId, { $inc: { followersCount: 1 } });
+
+            return res.json({ action: 'follow', msg: `${targetUser.username} takip edildi!` });
         }
 
     } catch (err) {
         console.error(err.message);
-        res.status(500).send('Takip işlemi sırasında sunucu hatası.');
+        res.status(500).send('Hata');
     }
 });
 

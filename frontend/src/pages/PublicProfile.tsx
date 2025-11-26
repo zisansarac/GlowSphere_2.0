@@ -43,20 +43,45 @@ const PublicProfile = ({ selectedUserId, setView }: { selectedUserId: string | n
         loadProfileData();
     }, [selectedUserId, apiRequest, setView, user]);
 
-    const handleFollow = async () => {
+
+const handleFollow = async () => {
         if (!profileUser || followLoading) return;
+        
+        const prevFollowing = isFollowing;
+        
+        const prevFollowers = profileUser.followersCount || 0;
+
         setFollowLoading(true);
+        
         try {
-            const result = await apiRequest(`interact/follow/${profileUser._id}`, 'POST');
-            if (result.action === 'follow') {
-                setIsFollowing(true);
-                displayAlert(`${profileUser.username} takip edildi!`, 'success');
-            } else {
+            if (isFollowing) {
+              
                 setIsFollowing(false);
-                displayAlert(`${profileUser.username} takipten çıkarıldı.`, 'info');
+                setProfileUser((prev: any) => ({ 
+                    ...prev, 
+     
+                    followersCount: Math.max(0, (prev.followersCount || 0) - 1) 
+                }));
+            } else {
+               
+                setIsFollowing(true);
+                setProfileUser((prev: any) => ({ 
+                    ...prev, 
+                    followersCount: (prev.followersCount || 0) + 1 
+                }));
             }
-        } catch (error) { displayAlert("Hata", 'error'); } 
-        finally { setFollowLoading(false); }
+
+            const result = await apiRequest(`interact/follow/${profileUser._id}`, 'POST');
+            const nameToShow = profileUser.username || profileUser.email || 'Kullanıcı';
+            displayAlert(`${nameToShow} ${result.action === 'follow' ? 'takip edildi!' : 'takipten çıkarıldı.'}`, 'success');
+
+        } catch (error) {
+            setIsFollowing(prevFollowing);
+            setProfileUser((prev: any) => ({ ...prev, followersCount: prevFollowers }));
+            displayAlert("İşlem başarısız.", 'error');
+        } finally {
+            setFollowLoading(false);
+        }
     };
 
     if (loading) {
@@ -75,12 +100,12 @@ const PublicProfile = ({ selectedUserId, setView }: { selectedUserId: string | n
                     post={selectedPost} 
                     currentUser={user} 
                     onClose={() => setSelectedPost(null)} 
-                    // Public profilde silme/düzenleme yetkisi zaten modal içinde kontrol ediliyor (isOwner)
+                 
                 />
             )}
 
-            <div className="max-w-4xl mx-auto space-y-8 animate-fade-in">
-                <button onClick={() => setView('home')} className={`flex items-center text-gray-500 hover:text-[${COLORS.SECONDARY}] transition font-bold`}>&larr; Ana Akışa Dön</button>
+            <div className="max-w-6xl mx-auto space-y-8 animate-fade-in">
+                <button onClick={() => setView('home')} className={`flex items-center text-white hover:text-[${COLORS.PRIMARY}] transition font-bold`}>&larr; Ana Akışa Dön</button>
 
                 <div className={`bg-white rounded-4xl p-8 shadow-lg border border-[${COLORS.SECONDARY}]/5 flex flex-col md:flex-row items-center md:items-start gap-8`}>
                     <div className={`w-32 h-32 rounded-full bg-[${COLORS.SECONDARY}] flex items-center justify-center text-white font-extrabold text-5xl shadow-xl shrink-0 overflow-hidden border-4 border-white ring-2 ring-[${COLORS.PRIMARY}]/50`}>
@@ -94,8 +119,18 @@ const PublicProfile = ({ selectedUserId, setView }: { selectedUserId: string | n
                     <div className="grow text-center md:text-left">
                         <h2 className={`text-3xl font-extrabold text-[${COLORS.SECONDARY}]`}>@{profileUser.username || profileUser.email.split('@')[0]}</h2>
                         <div className="flex justify-center md:justify-start gap-6 my-6">
-                            <div className="text-center"><span className={`block font-bold text-xl text-[${COLORS.SECONDARY}]`}>{userPosts.length}</span><span className="text-xs text-gray-500 uppercase tracking-wide">Post</span></div>
-                            <div className="text-center"><span className={`block font-bold text-xl text-[${COLORS.SECONDARY}]`}>0</span><span className="text-xs text-gray-500 uppercase tracking-wide">Takipçi</span></div>
+                            <div className="text-center">
+        <span className={`block font-bold text-xl text-[${COLORS.SECONDARY}]`}>
+            {profileUser.followersCount || 0}
+        </span>
+        <span className="text-xs text-gray-500 uppercase tracking-wide">Takipçi</span>
+    </div>
+    <div className="text-center">
+        <span className={`block font-bold text-xl text-[${COLORS.SECONDARY}]`}>
+            {profileUser.followingCount || 0}
+        </span>
+        <span className="text-xs text-gray-500 uppercase tracking-wide">Takip</span>
+    </div>
                         </div>
                         <p className={`text-[${COLORS.SECONDARY}]/80 italic max-w-lg mb-6`}>{profileUser.bio || "Bu kullanıcı henüz biyografi eklemedi."}</p>
                         
@@ -103,7 +138,7 @@ const PublicProfile = ({ selectedUserId, setView }: { selectedUserId: string | n
                             <button 
                                 onClick={handleFollow}
                                 disabled={followLoading}
-                                className={`font-bold py-3 px-8 rounded-xl transition shadow-md transform hover:scale-105 flex items-center justify-center w-full md:w-auto ${isFollowing ? `bg-gray-200 text-[${COLORS.SECONDARY}] hover:bg-gray-300` : `bg-[${COLORS.SECONDARY}] text-white hover:bg-[${COLORS.PRIMARY}] hover:text-[${COLORS.SECONDARY}]`}`}
+                                className={`font-bold py-2 px-5 rounded-xl transition shadow-md transform hover:scale-105 flex items-center justify-center w-full md:w-auto ${isFollowing ? `text-[${COLORS.PRIMARY}] hover:bg-gray-300` : `bg-[${COLORS.SECONDARY}] text-white hover:bg-[${COLORS.PRIMARY}] hover:text-white`}`}
                             >
                                 {followLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : (isFollowing ? 'Takip Ediliyor' : 'Takip Et')}
                             </button>

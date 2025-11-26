@@ -79,9 +79,9 @@ const CreatePost = ({ setView }: { setView: React.Dispatch<React.SetStateAction<
 
     return (
         <div className="w-full min-h-screen p-6 sm:p-10 lg:pl-80 transition-all duration-300">
-            <div className="max-w-2xl mx-auto animate-fade-in">
+            <div className="max-w-7xl mx-auto animate-fade-in">
                 
-                <h1 className={`text-3xl font-extrabold text-[${COLORS.SECONDARY}] mb-8 border-b border-gray-200 pb-4`}>Yeni Post Oluştur</h1>
+                <h2 className={`text-5xl font-extrabold text-[${COLORS.SECONDARY}] mb-8 border-gray-200 pb-4`}>Yeni Post Oluştur</h2>
                 
                 <form onSubmit={handleSubmit} className={`bg-white p-8 rounded-4xl shadow-xl space-y-8 border border-[${COLORS.SECONDARY}]/5`}>
                     
@@ -139,7 +139,7 @@ const CreatePost = ({ setView }: { setView: React.Dispatch<React.SetStateAction<
                             value={tagsInput}
                             onChange={(e) => setTagsInput(e.target.value)}
                             className={`w-full bg-[${COLORS.BG_LIGHT}] border border-transparent rounded-xl p-4 outline-none focus:border-[${COLORS.PRIMARY}] focus:bg-white transition font-medium placeholder-gray-400 text-black`}
-                            placeholder="#doğa, #seyahat (Virgülle ayırın)"
+                            placeholder="doğa, seyahat (Virgülle ayırın)"
                         />
                     </div>
 

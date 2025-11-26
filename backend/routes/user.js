@@ -1,7 +1,9 @@
 const express = require('express');
 const router = express.Router();
+const mongoose = require('mongoose');
 const { protect } = require('../middleware/authMiddleware');
 const User = require('../models/User');
+const Follow = require('../models/Follow');
 
 // @route   GET /api/users/profile
 // @desc    Giriş yapmış kullanıcının profil bilgilerini döndürür
@@ -29,6 +31,12 @@ router.get('/:id', async (req, res) => {
         if (!user) {
             return res.status(404).json({ msg: 'Kullanıcı bulunamadı.' });
         }
+
+        const userData = {
+            ...user._doc, 
+            followersCount: user.followersCount || 0,
+            followingCount: user.followingCount || 0
+        };
 
         res.json({ user });
     } catch (err) {
@@ -65,6 +73,36 @@ router.get('/search/:query', async (req, res) => {
     } catch (err) {
         console.error("Arama Hatası:", err.message);
         res.status(500).send('Arama sırasında hata oluştu.');
+    }
+});
+
+// @route   GET /api/users/suggestions/random
+// @desc    Takip etmediğim rastgele 3 kullanıcıyı öner
+// @access  Private
+router.get('/suggestions/random', protect, async (req, res) => {
+    try {
+        const currentUserId = req.user.id;
+
+        const myFollows = await Follow.find({ follower: currentUserId }).select('following');
+        const excludeIds = myFollows.map(f => f.following);
+
+        excludeIds.push(new mongoose.Types.ObjectId(currentUserId));
+
+        const suggestions = await User.aggregate([
+            { 
+                $match: { 
+                    _id: { $nin: excludeIds } 
+                } 
+            },
+            { $sample: { size: 3 } }, 
+            { $project: { username: 1, email: 1, profileImage: 1 } } 
+        ]);
+
+        res.json(suggestions);
+
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).send('Öneriler alınırken hata oluştu.');
     }
 });
 

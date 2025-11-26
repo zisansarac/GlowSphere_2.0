@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import React, { useState, useEffect, useCallback } from 'react';
 import { Loader2 } from 'lucide-react';
@@ -8,11 +9,45 @@ import PostCard from '../components/PostCard';
 import TopCreators from '../components/TopCreators';
 import PostDetailModal from '../components/PostDetailModal';
 
+
 const HomeFeed = ({ setView, setSelectedUserId }: { setView: React.Dispatch<React.SetStateAction<string>>, setSelectedUserId: React.Dispatch<React.SetStateAction<string | null>> }) => {
     const { user, apiRequest, displayAlert } = useAuth(); 
     const [feed, setFeed] = useState<Post[]>([]);
     const [isFeedLoading, setIsFeedLoading] = useState(true); 
     const [selectedPost, setSelectedPost] = useState<Post | null>(null);
+    const [suggestedUsers, setSuggestedUsers] = useState<any[]>([]);
+
+    const fetchData = useCallback(async () => {
+        if (!user) return;
+        try {
+          
+            const [feedData, suggestionsData] = await Promise.all([
+                apiRequest('feed/home'),
+                apiRequest('users/suggestions/random') 
+            ]);
+            
+            setFeed(feedData);
+            
+            const formattedSuggestions = suggestionsData.map((u: any) => ({
+                id: u._id,
+                name: u.username || u.email.split('@')[0],
+                handle: u.email, // @handle
+                initials: u.email[0].toUpperCase(), 
+                profileImage: u.profileImage 
+            }));
+            setSuggestedUsers(formattedSuggestions);
+
+        } catch (error) {
+            console.error("Veri yüklenemedi:", error);
+        } finally {
+            setIsFeedLoading(false);
+        }
+    }, [apiRequest, user]);
+
+    useEffect(() => {
+        setIsFeedLoading(true);
+        fetchData();
+    }, [fetchData]);
 
     const fetchFeed = useCallback(async () => {
         if (!user) return;
@@ -45,13 +80,7 @@ const HomeFeed = ({ setView, setSelectedUserId }: { setView: React.Dispatch<Reac
         setFeed(prev => prev.map(p => p._id === postId ? { ...p, commentsCount: Math.max(0, p.commentsCount + delta) } : p));
     };
 
-    const mockCreators = [
-        { id: 'mock1', name: 'Hello World', handle: 'helloworld', initials: 'HW' },
-        { id: 'mock2', name: 'Zisan Sarac', handle: 'zisan.sarac', initials: 'ZS' },
-        { id: 'mock3', name: 'Reyyan', handle: 'reyyan', initials: 'R' },
-    ];
 
-    // DÜZELTME: lg:pl-80 burada senin orijinal kodundaki gibi duruyor.
     return (
         <div className="w-full min-h-screen lg:pl-80 p-6 sm:p-10 transition-all duration-300">
             
@@ -77,7 +106,7 @@ const HomeFeed = ({ setView, setSelectedUserId }: { setView: React.Dispatch<Reac
                         {isFeedLoading && <div className="flex justify-center py-20"><Loader2 className="animate-spin text-[#A7C080] w-12 h-12" /></div>}
                         
                         {!isFeedLoading && feed.length === 0 && (
-                            // DÜZELTME: rounded-4xl yapıldı
+                          
                             <div className="p-12 bg-white rounded-4xl text-center shadow-lg border-2 border-[#383a42]/5 animate-fade-in">
                                 <p className="text-2xl font-bold mb-3 text-[#383a42]">Akışınızda Henüz Post Yok</p>
                                 <p className="text-gray-500">Takip ettiğin kişilerin paylaşımları burada görünür.</p>
@@ -98,9 +127,13 @@ const HomeFeed = ({ setView, setSelectedUserId }: { setView: React.Dispatch<Reac
                         ))}                    
                     </div>
 
-                    <div className="hidden xl:block w-96 shrink-0 sticky top-10">
-                        <TopCreators creators={mockCreators} setView={setView} setSelectedUserId={setSelectedUserId} />
-                    </div>
+                   <div className="hidden xl:block w-96 shrink-0 sticky top-10">
+                    <TopCreators 
+                        creators={suggestedUsers} 
+                        setView={setView} 
+                        setSelectedUserId={setSelectedUserId} 
+                    />
+                </div>
                 </div>
             </div>
         </div>

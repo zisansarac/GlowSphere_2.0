@@ -128,8 +128,8 @@ const PostCard = ({
                         }}
                         className={`text-xs font-bold transition uppercase tracking-wider py-1 px-3 rounded-lg
                             ${isUserFollowing 
-                                ? 'text-gray-400 bg-gray-100 hover:bg-gray-200' 
-                                : 'text-[#A7C080] hover:text-[#383a42]'
+                                ? 'text-[#A7C080]hover:text-[#A7C080]' 
+                                : 'text-white hover:text-[#A7C080] '
                             }`}
                     >
                         {isUserFollowing ? 'Takip Ediliyor' : 'Takip Et'}

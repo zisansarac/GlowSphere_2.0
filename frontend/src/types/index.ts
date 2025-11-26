@@ -5,6 +5,8 @@ export interface User {
     username?: string;
     bio?: string;
     profileImage?: string;
+    followersCount?: number;
+    followingCount?: number;
     createdAt: string;
 }
 

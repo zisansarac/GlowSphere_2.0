@@ -1,11 +1,9 @@
-
 node_modules
 npm-debug.log
 yarn-error.log
 package-lock.json
 
 
-# 2. ÇEVRE DEĞİŞKENLERİ VE GİZLİ ANAHTARLAR 
 ya
 .env
 .env.local
@@ -14,18 +12,11 @@ ya
 .env.test
 
 
-# 3. BACKEND (NODE.JS/EXPRESS) İÇİN HARIÇ TUTULACAKLAR
-
-# Eğer backend kodunuzu derleme (compile) sonucu başka bir klasöre atıyorsanız
-# dist/
-# build/
-# out/
-
-
 .nodemon.json
 *.log
 
-# 4. FRONTEND (REACT/VUE/ANGULAR/BAŞKA) İÇİN HARIÇ TUTULACAKLAR
+uploads/
+coverage/
 
 build/
 dist/

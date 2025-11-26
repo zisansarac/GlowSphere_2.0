@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React from 'react';
-import { Home, Compass, Users, Bookmark, PlusSquare, LogOut, Zap } from 'lucide-react';
+import { Home, Compass, Users, Bookmark, PlusSquare, LogOut} from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 
@@ -9,8 +9,8 @@ const SidebarNavItem = ({ Icon, name, isActive, onClick }: { Icon: any, name: st
         onClick={onClick}
         className={`w-full flex items-center p-3.5 rounded-xl font-bold text-base transition-all duration-300 ease-in-out transform hover:scale-[1.02] mb-3 shadow-md
             ${isActive
-                ? ` text-lime-200` // Aktifken Lime rengi
-                : ` text-white hover:text-lime-200` // Pasifken Beyaz
+                ? ` text-lime-200` 
+                : ` text-white hover:text-lime-200` 
             }`
         }
     >
@@ -32,16 +32,15 @@ const Sidebar = ({ view, setView }: SidebarProps) => {
         { name: 'Explore', icon: Compass, view: 'explore' },
         { name: 'People', icon: Users, view: 'people' },
         { name: 'Saved', icon: Bookmark, view: 'saved' },
+        {name: 'Create Post', icon: PlusSquare, view:'createPost'}
     ];
 
     return (
         <div className={`hidden lg:flex w-72 h-full fixed left-0 top-0 bg-[#E0E8D7] p-6 flex-col justify-between shadow-2xl z-50 border-r border-[#A7C080]/30`}>
             <div>
                 {/* Logo */}
-                <div className="flex items-center space-x-2 mb-10 px-1 overflow-hidden">
-                    <div className="bg-[#383a42] p-1.5 rounded-lg shadow-lg shrink-0">
-                         <Zap className="w-6 h-6 text-[#A7C080]" />
-                    </div>
+                <div className="flex items-center space-x-4 mb-10 px-1 overflow-hidden">
+                    
                     <h3 className="text-3xl font-extrabold text-[#383a42] tracking-tighter truncate">glowsphere.</h3>
                 </div>
 
@@ -75,14 +74,6 @@ const Sidebar = ({ view, setView }: SidebarProps) => {
                     ))}
                 </nav>
 
-                <div className="mt-8 pt-8 border-t border-[#383a42]/10">
-                    <SidebarNavItem
-                        Icon={PlusSquare}
-                        name="Create Post"
-                        isActive={view === 'createPost'}
-                        onClick={() => setView('createPost')}
-                    />
-                </div>
             </div>
 
             <div>

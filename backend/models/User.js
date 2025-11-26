@@ -37,6 +37,14 @@ const UserSchema = new mongoose.Schema({
             ref: 'Post' 
         }
     ],
+    followersCount: {
+        type: Number,
+        default: 0
+    },
+    followingCount: {
+        type: Number,
+        default: 0
+    },
     createdAt: {
         type: Date,
         default: Date.now,
