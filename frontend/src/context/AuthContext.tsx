@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 /* eslint-disable react-refresh/only-export-components */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -99,7 +100,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             setLoading(false);
             throw error;
         }
-    }, [token]);
+    }, [logout, token]);
 
     const fetchUser = useCallback(async () => {
         if (!token) {
@@ -114,6 +115,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             const data = await response.json().catch(() => null);
 
             if (response.ok && data && data.user) {
+                if (data.user.profileImage) {
+                    data.user.profileImage = `${data.user.profileImage}?t=${new Date().getTime()}`;
+                }
+
                 setUser(data.user);
             } else if (response.status === 401) {
                 logout();

@@ -44,30 +44,40 @@ const PostDetailModal = ({
     const isPostOwner = currentPost.user?._id === currentUser._id;
 
     useEffect(() => {
-        // 1. Yorumları Getir
-        const fetchComments = async () => {
+
+        let isMounted = true;
+
+        const loadData = async () => {
+            setLoadingComments(true);
+            
             try {
-                const data = await apiRequest(`posts/${post._id}/comments`);
-                setComments(data);
-            } catch (error) { console.error(error); } 
-            finally { setLoadingComments(false); }
+                const [commentsData, likeData] = await Promise.all([
+                    apiRequest(`posts/${post._id}/comments`).catch(() => []), 
+                    apiRequest(`posts/is-liked/${post._id}`).catch(() => ({ isLiked: false })) 
+                ]);
+
+                if (isMounted) {
+                    setComments(commentsData);
+                    setIsLiked(likeData.isLiked);
+                }
+            } catch (error) {
+                console.error("Post detay verisi çekilemedi", error);
+            } finally {
+                if (isMounted) setLoadingComments(false);
+            }
         };
 
-        // 2. Beğeni Durumunu Getir
-        const checkLikeStatus = async () => {
-            try {
-                const data = await apiRequest(`posts/is-liked/${post._id}`);
-                setIsLiked(data.isLiked);
-            } catch (error) { console.error(error); }
-        };
+        if (post?._id) {
+            loadData();
+        }
 
-        fetchComments();
-        checkLikeStatus();
+        return () => { isMounted = false; };
+        
     }, [post._id, apiRequest]);
 
   
     const handleLikeToggle = async () => {
-        // Animasyonu başlat
+      
         setIsAnimating(true);
         setTimeout(() => setIsAnimating(false), 1000);
 

@@ -19,33 +19,31 @@ const PublicProfile = ({ selectedUserId, setView }: { selectedUserId: string | n
 
     useEffect(() => {
         let isMounted = true;
+      
         const loadProfileData = async () => {
             if (!selectedUserId) return;
             if (!profileUser) setLoading(true);
             try {
-                const [userData, postsData] = await Promise.all([
-                    apiRequest(`users/${selectedUserId}`),
-                    apiRequest(`posts/user/${selectedUserId}`)
-                ]);
-
+           
+                const userData = await apiRequest(`users/${selectedUserId}`);
                 if (isMounted) {
                     setProfileUser(userData.user);
-                    setUserPosts(postsData);
+                  
+                    setLoading(false); 
+                }
 
-                    if (user && user._id !== selectedUserId) {
-                        try {
-                            const followStatus = await apiRequest(`interact/is-following/${selectedUserId}`);
-                            if (isMounted) setIsFollowing(followStatus.isFollowing);
-                        } catch (e) { console.error("Takip durumu alınamadı"); }
-                    }
+                const postsData = await apiRequest(`posts/user/${selectedUserId}`);
+                if (isMounted) setUserPosts(postsData);
+
+                if (user && user._id !== selectedUserId) {
+                    const followStatus = await apiRequest(`interact/is-following/${selectedUserId}`);
+                    if (isMounted) setIsFollowing(followStatus.isFollowing);
                 }
             } catch (error) {
                 console.error("Profil yüklenemedi:", error);
-                displayAlert("Kullanıcı profili görüntülenemedi.", 'error');
-                
-            } finally {
-                setLoading(false);
-            }
+                if (isMounted) setLoading(false); 
+            } setLoading(false);
+            
         };
         loadProfileData();
         return () => { isMounted = false; };
