@@ -1,5 +1,5 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/no-unused-vars */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState, useEffect } from 'react';
 import { X, Edit2, Trash2, Loader2, Send, Heart, MessageCircle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
