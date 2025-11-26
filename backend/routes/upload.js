@@ -1,54 +1,39 @@
-// backend/routes/upload.js
-
 const express = require('express');
 const router = express.Router();
 const multer = require('multer');
-const path = require('path');
+const cloudinary = require('cloudinary').v2;
+const { CloudinaryStorage } = require('multer-storage-cloudinary');
+const dotenv = require('dotenv');
 
+dotenv.config();
 
-const storage = multer.diskStorage({
-    destination(req, file, cb) {
-        cb(null, 'uploads/'); 
+// 1. Cloudinary Ayarlarını Yapılandır
+cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET
+});
+
+// 2. Depolama Motorunu Oluştur (Bulut)
+const storage = new CloudinaryStorage({
+    cloudinary: cloudinary,
+    params: {
+        folder: 'glowsphere_uploads', 
+        allowed_formats: ['jpg', 'png', 'jpeg', 'webp'], // İzin 
     },
-    filename(req, file, cb) {
-      
-        cb(null, `${file.fieldname}-${Date.now()}${path.extname(file.originalname)}`);
-    }
 });
 
-
-function checkFileType(file, cb) {
-    const filetypes = /jpg|jpeg|png/; // İzin verilen uzantılar
-    const extname = filetypes.test(path.extname(file.originalname).toLowerCase());
-    const mimetype = filetypes.test(file.mimetype);
-
-    if (extname && mimetype) {
-        return cb(null, true);
-    } else {
-        cb('Hata: Sadece resim dosyaları yüklenebilir!');
-    }
-}
-
-
-const upload = multer({
-    storage,
-    fileFilter: function (req, file, cb) {
-        checkFileType(file, cb);
-    }
-});
+const upload = multer({ storage: storage });
 
 // @route   POST /api/upload
-// @desc    Resim yükle
-// @access  Public (veya Private yapabilirsin)
-
-// backend/routes/upload.js en alt kısım:
-
+// @desc    Resmi Cloudinary'ye yükle
+// @access  Public
 router.post('/', upload.single('image'), (req, res) => {
     try {
-
-        const normalizedPath = req.file.path.replace(/\\/g, "/");
-        res.send(`/${normalizedPath}`); 
+   
+        res.send(req.file.path); 
     } catch (error) {
+        console.error(error);
         res.status(400).send('Resim yüklenirken hata oluştu.');
     }
 });

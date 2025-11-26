@@ -49,7 +49,9 @@ const CreatePost = ({ setView }: { setView: React.Dispatch<React.SetStateAction<
             }
 
             const imagePath = await uploadResponse.text();
-            const fullImageUrl = `${SERVER_URL}${imagePath}`;
+            const fullImageUrl = imagePath.startsWith('http') 
+                ? imagePath 
+                : `${SERVER_URL}${imagePath}`;
 
             const tagsArray = tagsInput.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0);
             

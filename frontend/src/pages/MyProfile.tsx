@@ -55,7 +55,9 @@ const MyProfile = () => {
             if (!uploadRes.ok) throw new Error('Resim yüklenemedi');
             
             const imagePath = await uploadRes.text();
-            const fullImageUrl = `${SERVER_URL}${imagePath}`;
+            const fullImageUrl = imagePath.startsWith('http') 
+                ? imagePath 
+                : `${SERVER_URL}${imagePath}`;
 
             await apiRequest('interact/profile', 'PUT', { profileImage: fullImageUrl });
             
@@ -97,7 +99,7 @@ const MyProfile = () => {
             )}
 
             <div className="max-w-4xl mx-auto space-y-8 animate-fade-in">
-                <div className={`bg-white rounded-[2rem] p-8 shadow-lg border border-[${COLORS.SECONDARY}]/5 flex flex-col md:flex-row items-center md:items-start gap-8`}>
+                <div className={`bg-white rounded-4xl p-8 shadow-lg border border-[${COLORS.SECONDARY}]/5 flex flex-col md:flex-row items-center md:items-start gap-8`}>
                     
                     <div className="relative group cursor-pointer">
                         <input 
@@ -126,7 +128,7 @@ const MyProfile = () => {
                         </label>
                     </div>
 
-                    <div className="flex-grow text-center md:text-left pt-2">
+                    <div className="grow text-center md:text-left pt-2">
                         <h2 className={`text-3xl font-extrabold text-[${COLORS.SECONDARY}]`}>@{username}</h2>
                         <p className="text-gray-500 font-medium mb-4">{user.email}</p>
                         
