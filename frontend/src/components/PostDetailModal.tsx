@@ -190,7 +190,7 @@ const PostDetailModal = ({
                     <div className="grow p-5 overflow-y-auto space-y-4 bg-gray-50">
                         {isEditing ? (
                             <div className="space-y-2">
-                                <textarea value={editCaption} onChange={(e) => setEditCaption(e.target.value)} className={`w-full p-2 border rounded-lg outline-none focus:border-[${COLORS.PRIMARY}] text-sm`} rows={3} />
+                                <textarea value={editCaption} onChange={(e) => setEditCaption(e.target.value)} className={`w-full p-2 text-black border rounded-lg outline-none focus:border-[${COLORS.PRIMARY}] text-sm`} rows={3} />
                                 <button onClick={handleUpdatePost} className="text-xs bg-[#383a42] text-white px-3 py-1 rounded-lg w-full">Kaydet</button>
                             </div>
                         ) : (

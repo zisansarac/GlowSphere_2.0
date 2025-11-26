@@ -162,9 +162,9 @@ const PostCard = ({
                         <span className="font-bold text-gray-400">{post.commentsCount}</span>
                     </button>
 
-                    <button className="flex items-center space-x-2 group">
+                    {/* <button className="flex items-center space-x-2 group">
                         <Send className="w-6 h-6 text-[#383a42] group-hover:text-[#A7C080] transition transform -rotate-45 mb-1" />
-                    </button>
+                    </button> */}
                 </div>
                 
                 <button onClick={handleSaveToggle}>

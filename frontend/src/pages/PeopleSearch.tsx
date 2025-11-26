@@ -81,7 +81,7 @@ const PeopleSearch = ({ setView, setSelectedUserId }: { setView: React.Dispatch<
                                 </div>
                                 <button 
                                     onClick={() => handleViewProfile(user._id)}
-                                    className={`px-5 py-2 bg-[${COLORS.BG_LIGHT}] text-[${COLORS.SECONDARY}] font-bold rounded-xl hover:text-[${COLORS.PRIMARY}] transition text-sm whitespace-nowrap`}
+                                    className={`px-5 py-2 bg-[${COLORS.BG_LIGHT}] text-white font-bold rounded-xl hover:text-[${COLORS.PRIMARY}] transition text-sm whitespace-nowrap`}
                                 >
                                     Profili Gör
                                 </button>
