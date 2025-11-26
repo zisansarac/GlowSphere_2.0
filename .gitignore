@@ -15,8 +15,7 @@ ya
 .nodemon.json
 *.log
 
-uploads/
-coverage/
+
 
 build/
 dist/
