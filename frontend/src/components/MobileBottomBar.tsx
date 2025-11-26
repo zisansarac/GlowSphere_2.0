@@ -26,8 +26,8 @@ const MobileBottomBar = ({ view, setView }: MobileBottomBarProps) => {
                     onClick={item.action || (() => setView(item.view))}
                     className={`p-2 rounded-full transition duration-300 transform hover:scale-110
                         ${view === item.view && !item.action
-                            ? ` text-lime-200 shadow-md`
-                            : `text-white hover:text-lime-200`
+                            ? ` text-gray-400 shadow-md`
+                            : `text-lime-600 hover:text-lime-700`
                         }`
                     }
                 >

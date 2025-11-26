@@ -145,7 +145,7 @@ const PostDetailModal = ({
     return (
         <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in" onClick={onClose}>
             
-            <button onClick={onClose} className="fixed top-6 right-6 z-70 bg-black/50 p-2 rounded-full text-white hover:bg-white hover:text-black transition duration-300 shadow-lg">
+            <button onClick={onClose} className="fixed top-6 right-6 z-70 bg-black/50 p-2 rounded-full text-red-600 hover:bg-white hover:text-black transition duration-300 shadow-lg">
                 <X className="w-8 h-8" />
             </button>
 

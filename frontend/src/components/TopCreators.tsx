@@ -43,7 +43,7 @@ const TopCreators = ({ creators, setView, setSelectedUserId }: TopCreatorsProps)
                         
                         <button
                             onClick={() => handleCheckProfile(c.id)}
-                            className={`ml-5 mr-5 text-xs font-bold bg-[${COLORS.PRIMARY}] text-white py-1.5 px-1 rounded-lg hover:text-[${COLORS.PRIMARY}] transition duration-200 shadow-sm whitespace-nowrap`}
+                            className={`ml-5 mr-5 text-xs font-bold bg-[${COLORS.PRIMARY}] text-lime-600 py-1.5 px-1 rounded-lg hover:text-[${COLORS.PRIMARY}] transition duration-200 shadow-sm whitespace-nowrap`}
                         >
                             Profili Gör
                         </button>
