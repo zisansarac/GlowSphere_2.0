@@ -18,30 +18,38 @@ const PublicProfile = ({ selectedUserId, setView }: { selectedUserId: string | n
     const [followLoading, setFollowLoading] = useState(false);
 
     useEffect(() => {
+        let isMounted = true;
         const loadProfileData = async () => {
             if (!selectedUserId) return;
-            setLoading(true);
+            if (!profileUser) setLoading(true);
             try {
-                const userData = await apiRequest(`users/${selectedUserId}`);
-                setProfileUser(userData.user);
+                const [userData, postsData] = await Promise.all([
+                    apiRequest(`users/${selectedUserId}`),
+                    apiRequest(`posts/user/${selectedUserId}`)
+                ]);
 
-                const postsData = await apiRequest(`posts/user/${selectedUserId}`);
-                setUserPosts(postsData);
+                if (isMounted) {
+                    setProfileUser(userData.user);
+                    setUserPosts(postsData);
 
-                if (user && user._id !== selectedUserId) {
-                    const followStatus = await apiRequest(`interact/is-following/${selectedUserId}`);
-                    setIsFollowing(followStatus.isFollowing);
+                    if (user && user._id !== selectedUserId) {
+                        try {
+                            const followStatus = await apiRequest(`interact/is-following/${selectedUserId}`);
+                            if (isMounted) setIsFollowing(followStatus.isFollowing);
+                        } catch (e) { console.error("Takip durumu alınamadı"); }
+                    }
                 }
             } catch (error) {
                 console.error("Profil yüklenemedi:", error);
                 displayAlert("Kullanıcı profili görüntülenemedi.", 'error');
-                setView('home'); 
+                
             } finally {
                 setLoading(false);
             }
         };
         loadProfileData();
-    }, [selectedUserId, apiRequest, setView, user, displayAlert]);
+        return () => { isMounted = false; };
+    }, [selectedUserId, apiRequest, setView, user?._id, displayAlert, profileUser, user]);
 
 
 const handleFollow = async () => {

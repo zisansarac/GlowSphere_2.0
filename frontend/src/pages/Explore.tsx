@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import React, { useState, useEffect } from 'react';
 import { Loader2, Heart } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
@@ -7,21 +8,26 @@ import { COLORS } from '../utils/constants';
 const Explore = ({ setView, setSelectedUserId }: { setView: React.Dispatch<React.SetStateAction<string>>, setSelectedUserId: React.Dispatch<React.SetStateAction<string | null>> }) => {
     const { user, apiRequest, loading } = useAuth();
     const [allPosts, setAllPosts] = useState<Post[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
     
     useEffect(() => {
         let isMounted = true;
+
         const fetchAllPosts = async () => {
+            if (allPosts.length === 0) setIsLoading(true);
             try {
                 const data = await apiRequest('posts/all');
                 if (isMounted) setAllPosts(data);
             } catch (error) {
                 console.error("Explore hatası:", error);
+            }finally {
+                if (isMounted) setIsLoading(false);
             }
         };
 
         if (user) fetchAllPosts();
         return () => { isMounted = false; };
-    }, [user, apiRequest]);
+    }, [user, apiRequest, allPosts.length]);
 
     const handleViewProfile = (userId: string) => {
         setSelectedUserId(userId);
