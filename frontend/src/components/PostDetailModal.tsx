@@ -20,7 +20,6 @@ const PostDetailModal = ({
     post, 
     currentUser, 
     onClose, 
-    onCommentChange, 
     onPostDeleted, 
     onPostUpdated 
 }: PostDetailModalProps) => {

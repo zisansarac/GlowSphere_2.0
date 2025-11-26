@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import React, { useState, useEffect } from 'react';
-import { Heart, MessageCircle, Send, Bookmark } from 'lucide-react';
+import { Heart, MessageCircle, Bookmark } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import type { Post } from '../types';
 import { formatTimeAgo } from '../utils/dateUtils';
@@ -19,8 +19,7 @@ const PostCard = ({
     post, 
     currentUserId, 
     onFollowToggle, 
-    onViewProfile, 
-    onPostUpdate, 
+    onViewProfile,
     initialIsFollowing, 
     onCommentClick 
 }: PostCardProps) => {

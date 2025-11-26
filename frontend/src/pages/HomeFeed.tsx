@@ -4,7 +4,6 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Loader2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import type { Post } from '../types';
-import { COLORS } from '../utils/constants';
 import PostCard from '../components/PostCard';
 import TopCreators from '../components/TopCreators';
 import PostDetailModal from '../components/PostDetailModal';
@@ -63,7 +62,7 @@ const HomeFeed = ({ setView, setSelectedUserId }: { setView: React.Dispatch<Reac
 
     useEffect(() => { setIsFeedLoading(true); fetchFeed(); }, [fetchFeed]);
 
-    const handleFollowToggle = async (targetUserId: string, isUserFollowing: boolean, setIsUserFollowing: React.Dispatch<React.SetStateAction<boolean>>) => {
+    const handleFollowToggle = async (targetUserId: string, _isUserFollowing: boolean, setIsUserFollowing: React.Dispatch<React.SetStateAction<boolean>>) => {
         try {
             const result = await apiRequest(`interact/follow/${targetUserId}`, 'POST');
             if (result.action === 'follow') {

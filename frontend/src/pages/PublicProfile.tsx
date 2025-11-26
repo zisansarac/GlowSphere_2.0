@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import React, { useState, useEffect } from 'react';
-import { Loader2, Heart, X } from 'lucide-react';
+import { Loader2, Heart} from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import type { Post } from '../types';
 import { COLORS } from '../utils/constants';
@@ -41,7 +41,7 @@ const PublicProfile = ({ selectedUserId, setView }: { selectedUserId: string | n
             }
         };
         loadProfileData();
-    }, [selectedUserId, apiRequest, setView, user]);
+    }, [selectedUserId, apiRequest, setView, user, displayAlert]);
 
 
 const handleFollow = async () => {
