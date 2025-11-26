@@ -91,7 +91,7 @@ const AuthForm = ({ isRegister, toggleAuthMode }: { isRegister: boolean, toggleA
                         <button
                             type="submit"
                             disabled={loading}
-                            className={`w-full py-3.5 px-4 rounded-xl shadow-lg text-base font-bold text-lime-600 bg-[${COLORS.SECONDARY}] hover:text-lime-200 hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 mt-2`}
+                            className={`w-full py-3.5 px-4 rounded-xl shadow-lg text-base font-bold text-lime-600 bg-[${COLORS.SECONDARY}] hover:text-lime-700 hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 mt-2`}
                         >
                             {loading ? <Loader2 className="w-7 h-7 animate-spin mx-auto" /> : (isRegister ? 'Kayıt Ol' : 'Giriş Yap')}
                         </button>
@@ -99,7 +99,7 @@ const AuthForm = ({ isRegister, toggleAuthMode }: { isRegister: boolean, toggleA
 
                     <p className="text-center mt-6 text-gray-600 text-sm font-medium">
                         {isRegister ? 'Zaten hesabınız var mı?' : "Hesabınız yok mu?"}
-                        <button onClick={toggleAuthMode} className={`ml-4 font-bold text-white hover:text-[${COLORS.PRIMARY}] underline decoration-2 decoration-transparent hover:decoration-[${COLORS.PRIMARY}] transition-all`}>
+                        <button onClick={toggleAuthMode} className={`ml-4 font-bold text-lime-600 hover:text-[${COLORS.PRIMARY}] underline decoration-2 decoration-transparent hover:decoration-[${COLORS.PRIMARY}] transition-all`}>
                             {isRegister ? 'Giriş Yap' : 'Kayıt Ol'}
                         </button>
                     </p>
