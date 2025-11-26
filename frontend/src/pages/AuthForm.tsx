@@ -91,7 +91,7 @@ const AuthForm = ({ isRegister, toggleAuthMode }: { isRegister: boolean, toggleA
                         <button
                             type="submit"
                             disabled={loading}
-                            className={`w-full py-3.5 px-4 rounded-xl shadow-lg text-base font-bold text-white bg-[${COLORS.SECONDARY}] hover:text-lime-200 hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 mt-2`}
+                            className={`w-full py-3.5 px-4 rounded-xl shadow-lg text-base font-bold text-lime-600 bg-[${COLORS.SECONDARY}] hover:text-lime-200 hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 mt-2`}
                         >
                             {loading ? <Loader2 className="w-7 h-7 animate-spin mx-auto" /> : (isRegister ? 'Kayıt Ol' : 'Giriş Yap')}
                         </button>
