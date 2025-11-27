@@ -15,19 +15,29 @@ app.use(express.json());
 // CORS ayarı: Front-end'in sadece izin verilen adresten erişmesine izin ver.
 // Geliştirme aşamasında her yerden erişime izin vermek için 'cors()' kullanılabilir.
 
-const allowedOrigins = [process.env.FRONTEND_URL];
+// GÜNCELLENMİŞ CORS AYARI (DEBUG İÇİN)
+
+const allowedOrigins = [
+  "https://glow-sphere-2-0.vercel.app", // Elle ekledik, garanti olsun
+  "http://localhost:5173", // Local testlerin için
+  process.env.FRONTEND_URL // Env'den gelen
+];
+
 app.use(cors({
     origin: (origin, callback) => {
-        if (allowedOrigins.includes(origin) || !origin) {
+
+        if (!origin) return callback(null, true);
+
+        if (allowedOrigins.includes(origin)) {
             callback(null, true);
         } else {
-            callback(new Error('Bu kaynaktan erişime izin verilmiyor (CORS).'));
+            console.log("CORS Engellendi! Gelen Origin:", origin); 
+            callback(new Error(`CORS policy: ${origin} adresi engellendi.`));
         }
     },
     methods: ['GET', 'POST', 'PUT', 'DELETE'], 
     credentials: true
 }));
-
 
 app.get('/', (req, res) => {
     res.send('GlowSphere Backend API Çalışıyor!');

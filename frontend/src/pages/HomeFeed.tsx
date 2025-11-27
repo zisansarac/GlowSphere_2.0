@@ -16,51 +16,63 @@ const HomeFeed = ({ setView, setSelectedUserId }: { setView: React.Dispatch<Reac
     const [selectedPost, setSelectedPost] = useState<Post | null>(null);
     const [suggestedUsers, setSuggestedUsers] = useState<any[]>([]);
 
-    const fetchData = useCallback(async () => {
-        if (!user) return;
-        try {
-          
-            const [feedData, suggestionsData] = await Promise.all([
-                apiRequest('feed/home'),
-                apiRequest('users/suggestions/random') 
-            ]);
-            
-            setFeed(feedData);
-            
-            const formattedSuggestions = suggestionsData.map((u: any) => ({
-                id: u._id,
-                name: u.username || u.email.split('@')[0],
-                handle: u.email, // @handle
-                initials: u.email[0].toUpperCase(), 
-                profileImage: u.profileImage 
-            }));
-            setSuggestedUsers(formattedSuggestions);
-
-        } catch (error) {
-            console.error("Veri yüklenemedi:", error);
-        } finally {
-            setIsFeedLoading(false);
-        }
-    }, [apiRequest, user]);
-
-    useEffect(() => {
-        setIsFeedLoading(true);
-        fetchData();
-    }, [fetchData]);
-
-    const fetchFeed = useCallback(async () => {
+    // 1. TEK BİR VERİ ÇEKME FONKSİYONU (Sadece Feed'i güncellemek için)
+    // Bunu PostCard'lara 'onPostUpdate' olarak geçeceğiz.
+    const refreshFeedOnly = useCallback(async () => {
         if (!user) return;
         try {
             const data = await apiRequest('feed/home');
             setFeed(data);
         } catch (error) {
-            console.error("Feed yüklenemedi:", error);
-        } finally {
-            setIsFeedLoading(false);
+            console.error("Feed güncellenemedi:", error);
         }
     }, [apiRequest, user]);
 
-    useEffect(() => { setIsFeedLoading(true); fetchFeed(); }, [fetchFeed]);
+    // 2. ANA VERİ YÜKLEME (Sayfa ilk açıldığında çalışır)
+    useEffect(() => {
+        let isMounted = true; // Component unmount olursa state güncellemesini engellemek için
+
+        const initData = async () => {
+            if (!user) return;
+            
+            setIsFeedLoading(true);
+            try {
+                // Promise.all ile paralel istek atıyoruz
+                const [feedData, suggestionsData] = await Promise.all([
+                    apiRequest('feed/home'),
+                    apiRequest('users/suggestions/random') 
+                ]);
+                
+                if (isMounted) {
+                    setFeed(feedData);
+                    
+                    const formattedSuggestions = suggestionsData.map((u: any) => ({
+                        id: u._id,
+                        name: u.username || u.email.split('@')[0],
+                        handle: u.email, 
+                        initials: u.email[0].toUpperCase(), 
+                        profileImage: u.profileImage 
+                    }));
+                    setSuggestedUsers(formattedSuggestions);
+                }
+
+            } catch (error) {
+                console.error("Veri yüklenemedi:", error);
+                if (isMounted) displayAlert("Akış yüklenirken hata oluştu.", "error");
+            } finally {
+                if (isMounted) setIsFeedLoading(false);
+            }
+        };
+
+        initData();
+
+        return () => { isMounted = false; };
+        
+        // ÖNEMLİ: Bağımlılık dizisine [apiRequest, user] koyuyoruz ama
+        // eğer 'apiRequest' context içinde useCallback ile sarılmamışsa yine döngü yapabilir.
+        // Eğer döngü devam ederse burayı sadece [user] yapabilirsin.
+    }, [apiRequest, user, displayAlert]); 
+
 
     const handleFollowToggle = async (targetUserId: string, _isUserFollowing: boolean, setIsUserFollowing: React.Dispatch<React.SetStateAction<boolean>>) => {
         try {
@@ -79,7 +91,6 @@ const HomeFeed = ({ setView, setSelectedUserId }: { setView: React.Dispatch<Reac
         setFeed(prev => prev.map(p => p._id === postId ? { ...p, commentsCount: Math.max(0, p.commentsCount + delta) } : p));
     };
 
-
     return (
         <div className="w-full min-h-screen lg:pl-80 p-6 sm:p-10 transition-all duration-300">
             
@@ -90,7 +101,7 @@ const HomeFeed = ({ setView, setSelectedUserId }: { setView: React.Dispatch<Reac
                     onClose={() => setSelectedPost(null)} 
                     onCommentChange={handleCommentChange}
                     onPostDeleted={(id) => { setFeed(prev => prev.filter(p => p._id !== id)); setSelectedPost(null); }}
-                    onPostUpdated={fetchFeed}
+                    onPostUpdated={refreshFeedOnly}
                 />
             )}
 
@@ -119,7 +130,7 @@ const HomeFeed = ({ setView, setSelectedUserId }: { setView: React.Dispatch<Reac
                                 currentUserId={user!._id}
                                 onFollowToggle={handleFollowToggle}
                                 onViewProfile={(id) => { setSelectedUserId(id); setView('publicProfile'); }}
-                                onPostUpdate={fetchFeed}
+                                onPostUpdate={refreshFeedOnly}
                                 initialIsFollowing={true}
                                 onCommentClick={() => setSelectedPost(post)} 
                             />
