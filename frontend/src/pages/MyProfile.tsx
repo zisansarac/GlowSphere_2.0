@@ -7,14 +7,22 @@ import { COLORS, API_BASE_URL, SERVER_URL } from '../utils/constants';
 import PostDetailModal from '../components/PostDetailModal';
 
 const MyProfile = () => {
-    const { user, fetchUser, apiRequest, loading, displayAlert } = useAuth();
+    const { user, fetchUser, apiRequest, displayAlert } = useAuth();
     
-    const [bio, setBio] = useState(user?.bio || '');
-    const [username, setUsername] = useState(user?.username || user?.email?.split('@')[0] || '');
+    const [bio, setBio] = useState('');
+    const [username, setUsername] = useState('');
     const [myPosts, setMyPosts] = useState<Post[]>([]); 
     const [isLoadingPosts, setIsLoadingPosts] = useState(true);
     const [uploadingImg, setUploadingImg] = useState(false);
+    const [isSaving, setIsSaving] = useState(false);
     const [selectedPost, setSelectedPost] = useState<Post | null>(null);
+
+    useEffect(() => {
+        if (user) {
+            setBio(user.bio || '');
+            setUsername(user.username || user.email?.split('@')[0] || '');
+        }
+    }, [user]);
 
  
     useEffect(() => {
@@ -29,13 +37,13 @@ const MyProfile = () => {
             finally { if (isMounted) setIsLoadingPosts(false); }
         };
         
-        if (user) fetchMyPosts();
+        fetchMyPosts();
         
         return () => { isMounted = false; };
-    }, [user, apiRequest]);
+    }, [user?._id, apiRequest]);
 
    
-    if (!user) return null; 
+    if (!user) return <div className="flex justify-center mt-20"><Loader2 className="animate-spin" /></div>;
 
 
     const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -62,7 +70,7 @@ const MyProfile = () => {
             await apiRequest('interact/profile', 'PUT', { profileImage: fullImageUrl });
             
             displayAlert('Profil fotoğrafı güncellendi!', 'success');
-            fetchUser();
+            await fetchUser();
 
         } catch (error) {
             displayAlert('Fotoğraf yüklenirken hata oluştu.', 'error');
@@ -73,11 +81,18 @@ const MyProfile = () => {
 
     const handleUpdate = async (e: React.FormEvent) => {
         e.preventDefault();
+        setIsSaving(true);
         try {
             await apiRequest('interact/profile', 'PUT', { bio, username });
             displayAlert('Profil bilgileri güncellendi!', 'success');
-            fetchUser(); 
-        } catch (error) { console.error(error); }
+            await fetchUser(); 
+        } 
+        catch (error) {
+             console.error(error); }
+        finally {
+            setIsSaving(false); 
+            
+        }
     };
 
     return (
@@ -92,9 +107,7 @@ const MyProfile = () => {
                         setMyPosts(prev => prev.filter(p => p._id !== deletedId));
                         setSelectedPost(null);
                     }}
-                    onPostUpdated={() => { 
-                         
-                    }}
+                    onPostUpdated={() => {}}
                 />
             )}
 
@@ -148,8 +161,7 @@ const MyProfile = () => {
         <span className="text-xs text-gray-500 uppercase tracking-wide">Takip</span>
     </div>
 </div>
-
-                        <p className={`text-[${COLORS.SECONDARY}]/80 italic max-w-lg`}>{bio || "Henüz bir biyografi eklenmedi."}</p>
+              <p className={`text-[${COLORS.SECONDARY}]/80 italic max-w-lg`}>{bio || "Henüz bir biyografi eklenmedi."}</p>
                     </div>
                 </div>
 
@@ -179,10 +191,10 @@ const MyProfile = () => {
                         <div className="flex justify-end">
                             <button 
                                 type="submit" 
-                                disabled={loading} 
+                                disabled={isSaving} 
                                 className={`bg-[${COLORS.SECONDARY}] text-white font-bold py-3 px-8 rounded-xl hover:bg-[#4a4d57] transition disabled:opacity-50 shadow-lg`}
                             >
-                                {loading ? 'Kaydediliyor...' : 'Değişiklikleri Kaydet'}
+                                {isSaving ? 'Kaydediliyor...' : 'Değişiklikleri Kaydet'}
                             </button>
                         </div>
                     </form>

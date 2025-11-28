@@ -22,64 +22,62 @@ const PublicProfile = ({ selectedUserId, setView }: { selectedUserId: string | n
       
         const loadProfileData = async () => {
             if (!selectedUserId) return;
-            if (!profileUser) setLoading(true);
+
+            setLoading(true);
+
             try {
-           
-                const userData = await apiRequest(`users/${selectedUserId}`);
+                const [userData, postsData] = await Promise.all([
+                    apiRequest(`users/${selectedUserId}`),
+                    apiRequest(`posts/user/${selectedUserId}`)
+                ]);
+
                 if (isMounted) {
                     setProfileUser(userData.user);
-                  
-                    setLoading(false); 
+                    setUserPosts(postsData);
+                    setLoading(false);
                 }
 
-                const postsData = await apiRequest(`posts/user/${selectedUserId}`);
-                if (isMounted) setUserPosts(postsData);
-
                 if (user && user._id !== selectedUserId) {
-                    const followStatus = await apiRequest(`interact/is-following/${selectedUserId}`);
-                    if (isMounted) setIsFollowing(followStatus.isFollowing);
+                    try {
+                        const followStatus = await apiRequest(`interact/is-following/${selectedUserId}`);
+                        if (isMounted) setIsFollowing(followStatus.isFollowing);
+                    } catch (e) {
+                        console.error("Takip durumu alınamadı");
+                    }
                 }
             } catch (error) {
                 console.error("Profil yüklenemedi:", error);
-                if (isMounted) setLoading(false); 
-            } setLoading(false);
-            
+                if (isMounted) {
+                    displayAlert("Profil yüklenemedi", "error");
+                    setLoading(false); 
+                }
+            }   
         };
         loadProfileData();
         return () => { isMounted = false; };
-    }, [selectedUserId, apiRequest, setView, user?._id, displayAlert, profileUser, user]);
+    }, [selectedUserId, apiRequest, setView, user?._id, displayAlert, user]);
 
 
-const handleFollow = async () => {
+    const handleFollow = async () => {
         if (!profileUser || followLoading) return;
         
         const prevFollowing = isFollowing;
-        
         const prevFollowers = profileUser.followersCount || 0;
 
         setFollowLoading(true);
-        
-        try {
-            if (isFollowing) {
-              
-                setIsFollowing(false);
-                setProfileUser((prev: any) => ({ 
-                    ...prev, 
-     
-                    followersCount: Math.max(0, (prev.followersCount || 0) - 1) 
-                }));
-            } else {
-               
-                setIsFollowing(true);
-                setProfileUser((prev: any) => ({ 
-                    ...prev, 
-                    followersCount: (prev.followersCount || 0) + 1 
-                }));
-            }
 
+        if (isFollowing) {
+            setIsFollowing(false);
+            setProfileUser((prev: any) => ({ ...prev, followersCount: Math.max(0, (prev.followersCount || 0) - 1) }));
+        } else {
+            setIsFollowing(true);
+            setProfileUser((prev: any) => ({ ...prev, followersCount: (prev.followersCount || 0) + 1 }));
+        }
+
+        try {
             const result = await apiRequest(`interact/follow/${profileUser._id}`, 'POST');
             const nameToShow = profileUser.username || profileUser.email || 'Kullanıcı';
-            displayAlert(`${nameToShow} ${result.action === 'follow' ? 'takip edildi!' : 'takipten çıkarıldı.'}`, 'success');
+    
 
         } catch (error) {
             setIsFollowing(prevFollowing);
@@ -91,12 +89,13 @@ const handleFollow = async () => {
     };
 
     if (loading) {
-        return <div className={`w-full h-screen flex items-center justify-center bg-[${COLORS.BG_LIGHT}]`}><Loader2 className={`w-10 h-10 animate-spin text-[${COLORS.PRIMARY}]`} /></div>;
+        return <div className={`w-full h-screen flex items-center justify-center bg-[${COLORS.BG_LIGHT}]`}><Loader2 className={`w-12 h-12 animate-spin text-[${COLORS.PRIMARY}]`} /></div>;
     }
 
     if (!profileUser) return null;
 
     const isOwnProfile = user && user._id === profileUser._id;
+        
 
     return (
         <div className="w-full min-h-screen p-6 sm:p-10 lg:pl-80 transition-all duration-300 relative">

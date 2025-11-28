@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, memo } from 'react';
 import { Heart, MessageCircle, Bookmark } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import type { Post } from '../types';
@@ -15,7 +15,7 @@ interface PostCardProps {
     onCommentClick?: () => void;
 }
 
-const PostCard = ({ 
+const PostCard = memo(({ 
     post, 
     currentUserId, 
     onFollowToggle, 
@@ -33,29 +33,35 @@ const PostCard = ({
     
     const isOwner = post.user?._id === currentUserId;
 
+    // Post ID değişmediği sürece bu effect tekrar çalışmaz
     useEffect(() => {
         let isMounted = true;
+        if (!post._id) return;
+
         const checkStatus = async () => {
             try {
+                // Paralel istek atarak hızlandırıyoruz
                 const [likeData, saveData] = await Promise.all([
-                    apiRequest(`posts/is-liked/${post._id}`),
-                    apiRequest(`posts/is-saved/${post._id}`)
+                    apiRequest(`posts/is-liked/${post._id}`).catch(() => ({ isLiked: false })),
+                    apiRequest(`posts/is-saved/${post._id}`).catch(() => ({ isSaved: false }))
                 ]);
 
                 if (isMounted) {
-                    setIsLiked(likeData.isLiked);
-                    setIsSaved(saveData.isSaved);
+                    setIsLiked(!!likeData.isLiked);
+                    setIsSaved(!!saveData.isSaved);
                 }
             } catch (error) {
-                console.error("Durum kontrol hatası", error);
+                console.error("Durum kontrol hatası (PostCard):", error);
             }
         };
+
         checkStatus();
         return () => { isMounted = false; };
-    }, [post._id, apiRequest]);
+    }, [post._id, apiRequest]); 
 
     const handleLikeToggle = async (e?: React.MouseEvent) => {
         if (e) e.stopPropagation();
+        
         setIsAnimating(true);
         setTimeout(() => setIsAnimating(false), 1000);
         
@@ -67,14 +73,11 @@ const PostCard = ({
 
         try {
             const result = await apiRequest(`posts/like/${post._id}`, 'PUT'); 
-            if (result.action === 'like') {
-                setIsLiked(true);
-                setLikesCount(result.likesCount);
-            } else {
-                setIsLiked(false);
+            if (result && typeof result.likesCount === 'number') {
                 setLikesCount(result.likesCount);
             }
         } catch (error) {
+           
             setIsLiked(previousLiked);
             setLikesCount(previousCount);
         }
@@ -83,14 +86,18 @@ const PostCard = ({
     const handleSaveToggle = async (e: React.MouseEvent) => {
         e.stopPropagation();
         const previousSaved = isSaved;
-        setIsSaved(!previousSaved);
+        setIsSaved(!previousSaved); 
 
         try {
             const result = await apiRequest(`interact/save/${post._id}`, 'PUT');
             if (result.action === 'save') setIsSaved(true);
             else setIsSaved(false);
-        } catch (error) { setIsSaved(previousSaved); }
+        } catch (error) { 
+            setIsSaved(previousSaved); 
+        }
     };
+
+    if (!post || !post.user) return null;
 
     return (
         <div 
@@ -138,15 +145,17 @@ const PostCard = ({
 
             <p className="text-[#383a42] mb-3 leading-relaxed">{post.caption}</p>
             
-            <div className="flex flex-wrap gap-2 mb-4">
-                {(post.tags || []).map((tag, index) => (
-                    <span key={index} className="text-xs font-bold text-[#A7C080] bg-[#F5F5EC] px-2 py-1 rounded-lg">#{tag}</span>
-                ))}
-            </div>
+            {(post.tags && post.tags.length > 0) && (
+                <div className="flex flex-wrap gap-2 mb-4">
+                    {post.tags.map((tag, index) => (
+                        <span key={index} className="text-xs font-bold text-[#A7C080] bg-[#F5F5EC] px-2 py-1 rounded-lg">#{tag}</span>
+                    ))}
+                </div>
+            )}
 
-            <div className="aspect-square w-full bg-gray-100 rounded-2xl overflow-hidden shadow-inner mb-4 relative" onDoubleClick={handleLikeToggle}>
-                <img src={post.imageUrl} alt="Post" className="w-full h-full object-cover" />
-                <Heart className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-24 h-24 text-white fill-white drop-shadow-lg transition-all duration-500 ${isAnimating ? 'opacity-100 scale-125' : 'opacity-0 scale-50'}`} />
+            <div className="w-full bg-gray-100 rounded-2xl overflow-hidden shadow-inner mb-4 relative group" onDoubleClick={handleLikeToggle}>
+                <img src={post.imageUrl} alt="Post" className="w-full h-auto max-h-[600px] object-contain mx-auto" />
+                <Heart className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-24 h-24 text-white fill-white drop-shadow-lg transition-all duration-300 pointer-events-none ${isAnimating ? 'opacity-100 scale-125' : 'opacity-0 scale-50'}`} />
             </div>
 
             <div className="flex items-center justify-between">
@@ -176,6 +185,6 @@ const PostCard = ({
             </div>
         </div>
     );
-};
+});
 
 export default PostCard;

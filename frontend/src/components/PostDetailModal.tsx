@@ -163,16 +163,16 @@ const PostDetailModal = ({
                 
                 {/* SOL: Resim */}
                 <div 
-                    className="w-full md:w-[60%] h-1/2 md:h-full bg-black flex items-center justify-center relative cursor-pointer" 
+                    className="w-full md:w-[60%] h-[40%] md:h-full bg-black flex items-center justify-center relative cursor-pointer" 
                     onDoubleClick={handleLikeToggle} 
                 >
-                    <img src={currentPost.imageUrl} alt="Detay" className="max-w-full max-h-full object-contain" />
+                    <img src={currentPost.imageUrl} alt="Detay" className="w-full h-full object-contain" />
       
-                    <Heart className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-32 h-32 text-red-500 fill-red-500 drop-shadow-lg transition-all duration-500 ${isAnimating ? 'opacity-100 scale-125' : 'opacity-0 scale-50'}`} />
+                    <Heart className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-32 h-32 text-red-500 fill-red-500 drop-shadow-lg transition-all duration-300 pointer-events-none ${isAnimating ? 'opacity-100 scale-125' : 'opacity-0 scale-50'}`} />
                 </div>
 
                 {/* SAĞ: Panel */}
-                <div className="w-full md:w-[40%] h-1/2 md:h-full bg-white flex flex-col">
+                <div className="w-full md:w-[40%] h-[60%] md:h-full bg-white flex flex-col">
                     <div className="p-5 border-b border-gray-100 flex items-center justify-between shrink-0">
                         <div className="flex items-center space-x-3">
                             <div className="w-10 h-10 rounded-full bg-[#383a42] flex items-center justify-center text-white font-bold overflow-hidden">

@@ -21,6 +21,8 @@ const TopCreators = ({ creators, setView, setSelectedUserId }: TopCreatorsProps)
         setView('publicProfile');
     };
 
+    if (!creators || creators.length === 0) return null;
+
     return (
         <div className={`w-full p-6 bg-[${COLORS.BG_DARK}] rounded-3xl shadow-lg sticky top-8 animate-fade-in hidden xl:block border border-[${COLORS.PRIMARY}]/20`}>
             <h2 className="text-xl font-extrabold text-[#383a42] mb-6">En İyi İçerik Üreticileri</h2>
