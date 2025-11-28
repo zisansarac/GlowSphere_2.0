@@ -16,15 +16,16 @@ const PublicProfile = ({ selectedUserId, setView }: { selectedUserId: string | n
     const [selectedPost, setSelectedPost] = useState<Post | null>(null);
     const [isFollowing, setIsFollowing] = useState(false);
     const [followLoading, setFollowLoading] = useState(false);
-    const lastFetchedId = useRef<string | null>(null);
+    
+    const isDataLoaded = useRef(false);
+    const loadedUserId = useRef<string | null>(null);
 
     useEffect(() => {
         let isMounted = true;
       
         const loadProfileData = async () => {
             if (!selectedUserId) return;
-
-            if (lastFetchedId.current === selectedUserId) return;
+            if (loadedUserId.current === selectedUserId && profileUser) return;
 
             setLoading(true);
 
@@ -37,7 +38,8 @@ const PublicProfile = ({ selectedUserId, setView }: { selectedUserId: string | n
                 if (isMounted) {
                     setProfileUser(userData.user);
                     setUserPosts(postsData);
-                    lastFetchedId.current = selectedUserId;
+                    loadedUserId.current = selectedUserId;
+                    isDataLoaded.current = true;
                     setLoading(false);
                 }
 
@@ -59,7 +61,7 @@ const PublicProfile = ({ selectedUserId, setView }: { selectedUserId: string | n
         };
         loadProfileData();
         return () => { isMounted = false; };
-    }, [selectedUserId, apiRequest, setView, user?._id, displayAlert, user]);
+    }, [selectedUserId]);
 
 
     const handleFollow = async () => {

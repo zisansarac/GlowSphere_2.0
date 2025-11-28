@@ -1,3 +1,4 @@
+/* eslint-disable no-useless-catch */
 /* eslint-disable react-hooks/exhaustive-deps */
 /* eslint-disable react-refresh/only-export-components */
 /* eslint-disable @typescript-eslint/no-unused-vars */
@@ -5,6 +6,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
 import type { User, AlertState } from '../types'; 
 import { API_BASE_URL } from '../utils/constants'; 
+
 interface AuthContextType {
     user: User | null;
     token: string | null;
@@ -30,6 +32,7 @@ export const useAuth = () => {
 };
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
+    
     const [user, setUser] = useState<User | null>(() => {
         try {
             const savedUser = localStorage.getItem('user');
@@ -44,6 +47,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const [loading, setLoading] = useState<boolean>(false);
     const [alert, setAlert] = useState<AlertState | null>(null);
 
+   
     useEffect(() => {
         if (token) localStorage.setItem('token', token);
         else localStorage.removeItem('token');
@@ -52,12 +56,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         else localStorage.removeItem('user');
     }, [token, user]);
 
-    const displayAlert = (msg: string, type: 'error' | 'success' | 'info' = 'error') => {
+    const displayAlert = useCallback((msg: string, type: 'error' | 'success' | 'info' = 'error') => {
         setAlert({ msg, type });
         setTimeout(() => setAlert(null), 4000);
-    };
+    }, []);
 
-    const logout = () => {
+   
+    const logout = useCallback(() => {
         console.log("Logout tetiklendi.");
         setToken(null);
         setUser(null);
@@ -66,11 +71,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         localStorage.removeItem('currentView');
         localStorage.removeItem('selectedUserId');
         setInitialLoading(false);
-        displayAlert('Oturum sonlandırıldı.', 'info');
-    };
+      
+    }, []);
 
+   
     const apiRequest = useCallback(async (endpoint: string, method: 'GET' | 'POST' | 'PUT' | 'DELETE' = 'GET', body: any = null): Promise<any> => {
+     
         setLoading(true);
+        
         const headers: HeadersInit = {
             'Content-Type': 'application/json',
             'Authorization': token ? `Bearer ${token}` : '',
@@ -84,8 +92,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             });
             
             const data = await response.json();
-            setLoading(false);
-
+            
             if (!response.ok) {
                 if (response.status === 401) {
                     console.warn("API isteği 401 döndü, çıkış yapılıyor.");
@@ -97,11 +104,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             }
             return data;
         } catch (error: any) {
-            setLoading(false);
             throw error;
+        } finally {
+            setLoading(false); 
         }
-    }, [logout, token]);
+    }, [token, logout, displayAlert]); 
 
+   
     const fetchUser = useCallback(async () => {
         if (!token) {
             setInitialLoading(false);
@@ -118,7 +127,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 if (data.user.profileImage) {
                     data.user.profileImage = `${data.user.profileImage}?t=${new Date().getTime()}`;
                 }
-
                 setUser(data.user);
             } else if (response.status === 401) {
                 logout();
@@ -128,26 +136,27 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         } finally {
             setInitialLoading(false);
         }
-    }, [token]);
+    }, [token, logout]); 
+
 
     useEffect(() => {
         if (token) fetchUser();
         else setInitialLoading(false);
     }, []); 
 
-    const login = async (email: string, password: string) => {
+    const login = useCallback(async (email: string, password: string) => {
         const data = await apiRequest('auth/login', 'POST', { email, password });
         setToken(data.token);
         setUser(data.user);
         displayAlert('Giriş başarılı!', 'success');
-    };
+    }, [apiRequest, displayAlert]);
 
-    const register = async (username: string, email: string, password: string) => {
+    const register = useCallback(async (username: string, email: string, password: string) => {
         const data = await apiRequest('auth/register', 'POST', { username, email, password });
         setToken(data.token);
         setUser(data.user);
         displayAlert('Kayıt başarılı! Hoş geldiniz.', 'success');
-    };
+    }, [apiRequest, displayAlert]);
 
     const value: AuthContextType = {
         user,
