@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Loader2, Heart} from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import type { Post } from '../types';
@@ -16,12 +16,15 @@ const PublicProfile = ({ selectedUserId, setView }: { selectedUserId: string | n
     const [selectedPost, setSelectedPost] = useState<Post | null>(null);
     const [isFollowing, setIsFollowing] = useState(false);
     const [followLoading, setFollowLoading] = useState(false);
+    const lastFetchedId = useRef<string | null>(null);
 
     useEffect(() => {
         let isMounted = true;
       
         const loadProfileData = async () => {
             if (!selectedUserId) return;
+
+            if (lastFetchedId.current === selectedUserId) return;
 
             setLoading(true);
 
@@ -34,6 +37,7 @@ const PublicProfile = ({ selectedUserId, setView }: { selectedUserId: string | n
                 if (isMounted) {
                     setProfileUser(userData.user);
                     setUserPosts(postsData);
+                    lastFetchedId.current = selectedUserId;
                     setLoading(false);
                 }
 
@@ -75,8 +79,7 @@ const PublicProfile = ({ selectedUserId, setView }: { selectedUserId: string | n
         }
 
         try {
-            const result = await apiRequest(`interact/follow/${profileUser._id}`, 'POST');
-            const nameToShow = profileUser.username || profileUser.email || 'Kullanıcı';
+            await apiRequest(`interact/follow/${profileUser._id}`, 'POST');
     
 
         } catch (error) {

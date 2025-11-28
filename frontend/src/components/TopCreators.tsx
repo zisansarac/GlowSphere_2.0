@@ -38,7 +38,7 @@ const TopCreators = ({ creators, setView, setSelectedUserId }: TopCreatorsProps)
                                )}
                         </div>
                             <div className="min-w-0">
-                                <p className="font-bold text-[#383a42] text-sm truncate">{c.name}</p>
+                                <p className="font-bold text-[#383a42] text-sm truncate">@{c.name}</p>
                                 
                             </div>
                         </div>
