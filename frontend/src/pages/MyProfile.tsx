@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import React, { useState, useEffect } from 'react';
 import { Loader2, Heart, Settings, Edit2 } from 'lucide-react';
@@ -7,44 +8,59 @@ import { COLORS, API_BASE_URL, SERVER_URL } from '../utils/constants';
 import PostDetailModal from '../components/PostDetailModal';
 
 const MyProfile = () => {
-    const { user, fetchUser, apiRequest, displayAlert } = useAuth();
+    const { user, apiRequest, displayAlert, fetchUser } = useAuth(); 
+
+    const [profileData, setProfileData] = useState<any>(null);
+    const [myPosts, setMyPosts] = useState<Post[]>([]); 
+    const [isLoading, setIsLoading] = useState(true);
     
     const [bio, setBio] = useState('');
     const [username, setUsername] = useState('');
-    const [myPosts, setMyPosts] = useState<Post[]>([]); 
-    const [isLoadingPosts, setIsLoadingPosts] = useState(true);
+    
     const [uploadingImg, setUploadingImg] = useState(false);
-    const [isSaving, setIsSaving] = useState(false);
+    const [isSaving, setIsSaving] = useState(false); 
     const [selectedPost, setSelectedPost] = useState<Post | null>(null);
 
-    useEffect(() => {
-        if (user) {
-            setBio(user.bio || '');
-            setUsername(user.username || user.email?.split('@')[0] || '');
-        }
-    }, [user]);
-
- 
+   
     useEffect(() => {
         let isMounted = true;
-        const fetchMyPosts = async () => {
-         
-            if (!user?._id) return; 
+
+        const loadMyData = async () => {
+            if (!user?._id) return;
+            
+            if(!profileData) setIsLoading(true);
+
             try {
-                const data = await apiRequest(`posts/user/${user._id}`);
-                if (isMounted) setMyPosts(data);
-            } catch (error) { console.error(error); } 
-            finally { if (isMounted) setIsLoadingPosts(false); }
+               
+                const [userData, postsData] = await Promise.all([
+                    apiRequest(`users/${user._id}`), 
+                    apiRequest(`posts/user/${user._id}`)
+                ]);
+                
+                if (isMounted) {
+                    setProfileData(userData.user);
+                    setMyPosts(postsData);
+
+                    setBio(userData.user.bio || '');
+                    setUsername(userData.user.username || userData.user.email?.split('@')[0] || '');
+                }
+            } catch (error) { 
+                console.error("Profil yükleme hatası:", error); 
+            } finally { 
+                if (isMounted) setIsLoading(false); 
+            }
         };
-        
-        fetchMyPosts();
+
+        loadMyData();
         
         return () => { isMounted = false; };
-    }, [user?._id, apiRequest]);
+    }, [user?._id]); 
 
    
-    if (!user) return <div className="flex justify-center mt-20"><Loader2 className="animate-spin" /></div>;
-
+    if (!user) return <div className="flex justify-center mt-20"><Loader2 className="animate-spin" /></div>; 
+    
+ 
+    const displayUser = profileData || user;
 
     const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -63,14 +79,15 @@ const MyProfile = () => {
             if (!uploadRes.ok) throw new Error('Resim yüklenemedi');
             
             const imagePath = await uploadRes.text();
-            const fullImageUrl = imagePath.startsWith('http') 
-                ? imagePath 
-                : `${SERVER_URL}${imagePath}`;
+            const fullImageUrl = imagePath.startsWith('http') ? imagePath : `${SERVER_URL}${imagePath}`;
 
             await apiRequest('interact/profile', 'PUT', { profileImage: fullImageUrl });
             
             displayAlert('Profil fotoğrafı güncellendi!', 'success');
-            await fetchUser();
+            
+           
+            setProfileData((prev: any) => ({ ...prev, profileImage: fullImageUrl }));
+            fetchUser(); 
 
         } catch (error) {
             displayAlert('Fotoğraf yüklenirken hata oluştu.', 'error');
@@ -81,17 +98,20 @@ const MyProfile = () => {
 
     const handleUpdate = async (e: React.FormEvent) => {
         e.preventDefault();
-        setIsSaving(true);
+        setIsSaving(true); 
         try {
             await apiRequest('interact/profile', 'PUT', { bio, username });
             displayAlert('Profil bilgileri güncellendi!', 'success');
-            await fetchUser(); 
-        } 
-        catch (error) {
-             console.error(error); }
-        finally {
-            setIsSaving(false); 
             
+            // Yerel state'i güncelle
+            setProfileData((prev: any) => ({ ...prev, bio, username }));
+            fetchUser(); // Global state'i de güncelle
+
+        } catch (error) { 
+            console.error(error); 
+            displayAlert('Güncelleme başarısız.', 'error');
+        } finally {
+            setIsSaving(false); 
         }
     };
 
@@ -151,16 +171,16 @@ const MyProfile = () => {
                         <span className="text-xs text-gray-500 uppercase tracking-wide">Post</span>
                      </div>
                     <div className="text-center">
-     
-        <span className={`block font-bold text-xl text-[${COLORS.SECONDARY}]`}>{user.followersCount || 0}</span>
-        <span className="text-xs text-gray-500 uppercase tracking-wide">Takipçi</span>
-    </div>
-    <div className="text-center">
-       
-        <span className={`block font-bold text-xl text-[${COLORS.SECONDARY}]`}>{user.followingCount || 0}</span>
-        <span className="text-xs text-gray-500 uppercase tracking-wide">Takip</span>
-    </div>
-</div>
+                       <span className={`block font-bold text-xl text-[${COLORS.SECONDARY}]`}>{displayUser.followersCount || 0}</span>
+                       <span className="text-xs text-gray-500 uppercase tracking-wide">Takipçi</span>
+                    </div>
+
+                <div className="text-center">
+                     <span className={`block font-bold text-xl text-[${COLORS.SECONDARY}]`}>{displayUser.followingCount || 0}</span>
+                     <span className="text-xs text-gray-500 uppercase tracking-wide">Takip</span>
+                </div>
+              </div>
+              
               <p className={`text-[${COLORS.SECONDARY}]/80 italic max-w-lg`}>{bio || "Henüz bir biyografi eklenmedi."}</p>
                     </div>
                 </div>
@@ -203,7 +223,7 @@ const MyProfile = () => {
                 <div>
                     <h3 className={`text-2xl font-bold text-[${COLORS.SECONDARY}] mb-6 border-b pb-2 inline-block`}>Postlarım</h3>
                     
-                    {isLoadingPosts ? (
+                    {isLoading ? (
                         <div className="flex justify-center py-10"><Loader2 className={`animate-spin text-[${COLORS.PRIMARY}] w-10 h-10`} /></div>
                     ) : myPosts.length === 0 ? (
                         <div className="text-center py-12 bg-white rounded-3xl shadow-sm border border-dashed border-gray-300">
