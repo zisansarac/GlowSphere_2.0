@@ -134,7 +134,7 @@ const PostCard = memo(({
                         }}
                         className={`text-xs font-bold transition uppercase tracking-wider py-1 px-3 rounded-lg
                             ${isUserFollowing 
-                                ? 'text-[#A7C080]hover:text-[#A7C080]' 
+                                ? 'text-[#8aad51] hover:text-lime-200' 
                                 : 'text-white hover:text-[#A7C080] '
                             }`}
                     >

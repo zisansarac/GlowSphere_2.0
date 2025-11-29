@@ -9,8 +9,8 @@ const SidebarNavItem = ({ Icon, name, isActive, onClick }: { Icon: any, name: st
         onClick={onClick}
         className={`w-full flex items-center p-3.5 rounded-xl font-bold text-base transition-all duration-300 ease-in-out transform hover:scale-[1.02] mb-3 shadow-md
             ${isActive
-                ? ` text-gray-400` 
-                : ` text-lime-600 hover:text-lime-700` 
+                ? ` text-gray-300` 
+                : ` text-[#8aad51] hover:text-lime-200` 
             }`
         }
     >

@@ -16,8 +16,7 @@ const HomeFeed = ({ setView, setSelectedUserId }: { setView: React.Dispatch<Reac
     const [selectedPost, setSelectedPost] = useState<Post | null>(null);
     const [suggestedUsers, setSuggestedUsers] = useState<any[]>([]);
 
-    // 1. TEK BİR VERİ ÇEKME FONKSİYONU (Sadece Feed'i güncellemek için)
-    // Bunu PostCard'lara 'onPostUpdate' olarak geçeceğiz.
+
     const refreshFeedOnly = useCallback(async () => {
         if (!user) return;
         try {
@@ -28,16 +27,16 @@ const HomeFeed = ({ setView, setSelectedUserId }: { setView: React.Dispatch<Reac
         }
     }, [apiRequest, user]);
 
-    // 2. ANA VERİ YÜKLEME (Sayfa ilk açıldığında çalışır)
+
     useEffect(() => {
-        let isMounted = true; // Component unmount olursa state güncellemesini engellemek için
+        let isMounted = true; 
 
         const initData = async () => {
             if (!user) return;
             
             setIsFeedLoading(true);
             try {
-                // Promise.all ile paralel istek atıyoruz
+              
                 const [feedData, suggestionsData] = await Promise.all([
                     apiRequest('feed/home'),
                     apiRequest('users/suggestions/random') 
@@ -68,9 +67,6 @@ const HomeFeed = ({ setView, setSelectedUserId }: { setView: React.Dispatch<Reac
 
         return () => { isMounted = false; };
         
-        // ÖNEMLİ: Bağımlılık dizisine [apiRequest, user] koyuyoruz ama
-        // eğer 'apiRequest' context içinde useCallback ile sarılmamışsa yine döngü yapabilir.
-        // Eğer döngü devam ederse burayı sadece [user] yapabilirsin.
     }, [apiRequest, user, displayAlert]); 
 
 
@@ -107,7 +103,7 @@ const HomeFeed = ({ setView, setSelectedUserId }: { setView: React.Dispatch<Reac
 
             <div className="max-w-[1600px] mx-auto">
                 <div className="mb-10 animate-fade-in pt-4 lg:pt-0">
-                    <h1 className="text-3xl font-extrabold text-[#383a42] mb-2 tracking-tight">Ana Akış</h1>
+                    <h1 className="text-3xl font-extrabold text-[#383a42] mb-2 tracking-tight">glowsphere'de bir gün</h1>
                     <p className="text-gray-500 font-medium text-lg">GlowSphere'deki en yeni paylaşımları keşfet.</p>
                 </div>
                 
