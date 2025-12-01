@@ -4,7 +4,6 @@ const nodemailer = require('nodemailer');
 const sendEmail = async (options) => {
    
     const transporter = nodemailer.createTransport({
-        service: 'gmail',
         host: 'smtp.gmail.com',
         port: 465, 
         secure: true,
@@ -17,6 +16,14 @@ const sendEmail = async (options) => {
         }
     });
 
+    transporter.verify(function (error, success) {
+        if (error) {
+            console.log("Sunucu Bağlantı Hatası:", error);
+        } else {
+            console.log("Sunucu hazır, mesaj gönderilebilir.");
+        }
+    });
+
   
     const mailOptions = {
         from: `GlowSphere Support <${process.env.EMAIL_USER}>`,
@@ -25,6 +32,8 @@ const sendEmail = async (options) => {
         text: options.message,
       
     };
+
+    await transporter.sendMail(mailOptions);
 
   
     await transporter.sendMail(mailOptions);
