@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Loader2, Heart } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import type { Post } from '../types';
@@ -9,24 +9,54 @@ const Explore = ({ setView, setSelectedUserId }: { setView: React.Dispatch<React
     const { user, apiRequest} = useAuth();
     const [allPosts, setAllPosts] = useState<Post[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [page, setPage] = useState(1);
+    const [hasMore, setHasMore] = useState(true);
+
+    const observer = useRef<IntersectionObserver | null>(null);
+
+    const lastPostElementRef = useCallback((node: HTMLDivElement) => {
+        if (isLoading) return; 
+        
+        if (observer.current) observer.current.disconnect();
+        
+        observer.current = new IntersectionObserver(entries => {
+            if (entries[0].isIntersecting && hasMore) {
+                setPage(prevPage => prevPage + 1); 
+            }
+        });
+        
+        if (node) observer.current.observe(node);
+    }, [isLoading, hasMore]);
+    
     
     useEffect(() => {
         let isMounted = true;
 
         const fetchAllPosts = async () => {
-            if (allPosts.length === 0) setIsLoading(true);
+            if (page === 1) setIsLoading(true);
 
             
             try {
-                const data = await apiRequest('posts/all');
+                const data = await apiRequest(`posts/all?page=${page}&limit=12`);
+
                 if (isMounted) {
-                     setAllPosts(data);
-                     setIsLoading(false);
+
+                    const incomingPosts = data.posts || (Array.isArray(data) ? data : []);
+
+                     setAllPosts(prevPosts => {
+                      
+                        if (page === 1) return incomingPosts;
+                        
+                        const newPosts = incomingPosts.filter((p: Post) => !prevPosts.find(existing => existing._id === p._id));
+                        return [...prevPosts, ...newPosts];
+                    });
+
+                    setHasMore(data.hasMore !== undefined ? data.hasMore : false);
+                    setIsLoading(false);
                 }
                
             } catch (error) {
                 console.error("Explore hatası:", error);
-            }finally {
                 if (isMounted) setIsLoading(false);
             }
         };
@@ -34,7 +64,7 @@ const Explore = ({ setView, setSelectedUserId }: { setView: React.Dispatch<React
         if (user) fetchAllPosts();
 
         return () => { isMounted = false; };
-    }, [user, apiRequest]);
+    }, [user, apiRequest, page]);
 
     const handleViewProfile = (userId: string) => {
         setSelectedUserId(userId);
@@ -46,27 +76,64 @@ const Explore = ({ setView, setSelectedUserId }: { setView: React.Dispatch<React
             <div className="max-w-[1600px] mx-auto animate-fade-in">
                 <h2 className={`text-5xl font-extrabold text-[${COLORS.SECONDARY}] mb-8`}>Keşfet</h2>
                 
-                {isLoading ? (
-                    <div className="flex justify-center"><Loader2 className={`animate-spin w-10 h-10 text-[${COLORS.PRIMARY}]`} /></div>
-                ) : (
-                    <div className="columns-1 sm:columns-2 md:columns-3 lg:columns-4 gap-4 space-y-4">
-                        {allPosts.map(post => (
-                            <div key={post._id} className="break-inside-avoid bg-white rounded-2xl shadow-md overflow-hidden hover:shadow-xl transition duration-300 cursor-pointer group" onClick={() => handleViewProfile(post.user._id)}>
-                                <div className="relative">
-                                    <img src={post.imageUrl} alt="Explore" className="w-full h-auto object-cover" />
-                                    <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition duration-300"></div>
-                                </div>
-                                <div className="p-4">
-                                    <p className={`font-bold text-[${COLORS.SECONDARY}] text-sm truncate`}>{post.caption}</p>
-                                    <div className="flex items-center justify-between mt-2">
-                                         <p className="text-xs text-gray-500">@{post.user?.username || post.user?.email?.split('@')[0] || 'User'}</p>
-                                         <div className="flex items-center text-xs text-gray-400">
-                                            <Heart className="w-3 h-3 mr-1" /> {post.likesCount}
-                                         </div>
+                <div className="columns-1 sm:columns-2 md:columns-3 lg:columns-4 gap-4 space-y-4">
+                    {(allPosts || []).map((post, index) => {
+                        
+                        if (!post) return null;
+                      
+                        if (allPosts.length === index + 1) {
+                            return (
+                                <div ref={lastPostElementRef} key={post._id} className="break-inside-avoid bg-white rounded-2xl shadow-md overflow-hidden hover:shadow-xl transition duration-300 cursor-pointer group" onClick={() => handleViewProfile(post.user._id)}>
+                                    
+                                    <div className="relative">
+                                        <img src={post.imageUrl} alt="Explore" className="w-full h-auto object-cover" />
+                                        <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition duration-300"></div>
+                                    </div>
+                                    <div className="p-4">
+                                        <p className={`font-bold text-[${COLORS.SECONDARY}] text-sm truncate`}>{post.caption}</p>
+                                        <div className="flex items-center justify-between mt-2">
+                                             <p className="text-xs text-gray-500">@{post.user?.username || post.user?.email?.split('@')[0] || 'User'}</p>
+                                             <div className="flex items-center text-xs text-gray-400">
+                                                <Heart className="w-3 h-3 mr-1" /> {post.likesCount}
+                                             </div>
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-                        ))}
+                            );
+                        } else {
+                            return (
+                                <div key={post._id} className="break-inside-avoid bg-white rounded-2xl shadow-md overflow-hidden hover:shadow-xl transition duration-300 cursor-pointer group" onClick={() => handleViewProfile(post.user._id)}>
+                                   
+                                    <div className="relative">
+                                        <img src={post.imageUrl} alt="Explore" className="w-full h-auto object-cover" />
+                                        <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition duration-300"></div>
+                                    </div>
+                                    <div className="p-4">
+                                        <p className={`font-bold text-[${COLORS.SECONDARY}] text-sm truncate`}>{post.caption}</p>
+                                        <div className="flex items-center justify-between mt-2">
+                                             <p className="text-xs text-gray-500">@{post.user?.username || post.user?.email?.split('@')[0] || 'User'}</p>
+                                             <div className="flex items-center text-xs text-gray-400">
+                                                <Heart className="w-3 h-3 mr-1" /> {post.likesCount}
+                                             </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            );
+                        }
+                    })}
+                </div>
+
+              
+                {isLoading && (
+                    <div className="flex justify-center py-10 w-full">
+                        <Loader2 className={`animate-spin w-10 h-10 text-[${COLORS.PRIMARY}]`} />
+                    </div>
+                )}
+                
+               
+                {!isLoading && !hasMore && allPosts.length > 0 && (
+                    <div className="text-center py-10 text-gray-400 font-medium">
+                        Tüm postları gördün! 🎉
                     </div>
                 )}
             </div>

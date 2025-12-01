@@ -101,11 +101,24 @@ router.delete('/:id', protect, async (req, res) => {
 // @access  Public (Herkes görebilir)
 router.get('/all', async (req, res) => {
     try {
+
+        const page= parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 10;
+
+        const skip = (page-1) * limit;
+
         const posts = await Post.find()
             .sort({ createdAt: -1 })
-            .populate('user', ['username','email', 'createdAt']); 
+            .skip(skip)
+            .limit(limit)
+            .populate('user', ['username','email', 'createdAt', 'profileImage']); 
+
+        const total = await Post.countDocuments();
             
-        res.json(posts);
+        res.json({ posts,
+                   hasMore: skip + posts.length < total
+        });
+
     } catch (err) {
         console.error(err.message);
         res.status(500).send('Sunucu Hatası');
