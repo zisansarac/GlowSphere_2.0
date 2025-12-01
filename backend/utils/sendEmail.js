@@ -1,36 +1,37 @@
-// utils/sendEmail.js
 const nodemailer = require('nodemailer');
 
 const sendEmail = async (options) => {
-   
     const transporter = nodemailer.createTransport({
-        service: 'gmail',
+        host: 'smtp.gmail.com',
+        port: 587,
+        secure: false, 
         auth: {
-            user: process.env.EMAIL_USER, 
-            pass: process.env.EMAIL_PASS  
-        }
+            user: process.env.EMAIL_USER,
+            pass: process.env.EMAIL_PASS
+        },
+        tls: {
+            ciphers: 'SSLv3',
+            rejectUnauthorized: false
+        },
+    
+        family: 4 
     });
 
-    transporter.verify(function (error, success) {
+    transporter.verify((error, success) => {
         if (error) {
-            console.log("Sunucu Bağlantı Hatası:", error);
+            console.error("SMTP Bağlantı Hatası:", error);
         } else {
-            console.log("Sunucu hazır, mesaj gönderilebilir.");
+            console.log("SMTP Sunucusu Hazır ve Bağlı! 🚀");
         }
     });
 
-  
     const mailOptions = {
         from: `GlowSphere Support <${process.env.EMAIL_USER}>`,
         to: options.email,
         subject: options.subject,
         text: options.message,
-      
     };
 
-    await transporter.sendMail(mailOptions);
-
-  
     await transporter.sendMail(mailOptions);
 };
 
