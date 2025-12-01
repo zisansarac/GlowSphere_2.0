@@ -1,4 +1,6 @@
 const express = require('express');
+const crypto = require('crypto');
+const sendEmail = require('../utils/sendEmail');
 const router = express.Router();
 const User = require('../models/User');
 const jwt = require('jsonwebtoken');
@@ -90,5 +92,93 @@ router.post('/login', async (req, res) => {
         res.status(500).send('Sunucu hatası.');
     }
 });
+
+// @route   POST /api/auth/forgotpassword
+// @desc    Şifre sıfırlama linki gönder
+// @access  Public
+router.post('/forgotpassword', async (req, res) => {
+    const { email } = req.body;
+
+    try {
+        const user = await User.findOne({ email });
+
+        if (!user) {
+            return res.status(404).json({ msg: 'Bu e-posta ile kayıtlı kullanıcı bulunamadı.' });
+        }
+
+        const resetToken = crypto.randomBytes(20).toString('hex');
+
+
+        user.resetPasswordToken = crypto.createHash('sha256').update(resetToken).digest('hex');
+        
+
+        user.resetPasswordExpire = Date.now() + 10 * 60 * 1000;
+
+        await user.save();
+
+        const resetUrl = `${process.env.FRONTEND_URL}/resetpassword/${resetToken}`;
+
+        const message = `
+            Şifrenizi sıfırlamak için aşağıdaki linke tıklayın:\n\n
+            ${resetUrl}\n\n
+            Bu işlemi siz yapmadıysanız bu e-postayı görmezden gelin.
+        `;
+
+        try {
+            await sendEmail({
+                email: user.email,
+                subject: 'GlowSphere Şifre Sıfırlama',
+                message
+            });
+
+            res.status(200).json({ success: true, data: 'E-posta gönderildi.' });
+        } catch (emailError) {
+            console.error("Mail hatası:", emailError);
+            user.resetPasswordToken = undefined;
+            user.resetPasswordExpire = undefined;
+            await user.save();
+            return res.status(500).json({ msg: 'E-posta gönderilemedi.' });
+        }
+
+    } catch (err) {
+        console.error(err);
+        res.status(500).send('Sunucu hatası.');
+    }
+});
+
+
+// @route   PUT /api/auth/resetpassword/:resetToken
+// @desc    Yeni şifreyi kaydet
+// @access  Public
+router.put('/resetpassword/:resetToken', async (req, res) => {
+    try {
+    
+        const resetPasswordToken = crypto.createHash('sha256').update(req.params.resetToken).digest('hex');
+
+        const user = await User.findOne({
+            resetPasswordToken,
+            resetPasswordExpire: { $gt: Date.now() }
+        });
+
+        if (!user) {
+            return res.status(400).json({ msg: 'Geçersiz veya süresi dolmuş token.' });
+        }
+
+        user.password = req.body.password;
+
+        user.resetPasswordToken = undefined;
+        user.resetPasswordExpire = undefined;
+
+        await user.save();
+
+        res.status(200).json({ success: true, data: 'Şifre başarıyla güncellendi.' });
+
+    } catch (err) {
+        console.error(err);
+        res.status(500).send('Sunucu hatası.');
+    }
+});
+
+
 
 module.exports = router;

@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { COLORS } from '../utils/constants';
+import { Link } from 'react-router-dom';
 
 const AuthForm = ({ isRegister, toggleAuthMode }: { isRegister: boolean, toggleAuthMode: () => void }) => {
     const { login, register, loading } = useAuth();
@@ -43,7 +44,7 @@ const AuthForm = ({ isRegister, toggleAuthMode }: { isRegister: boolean, toggleA
                         </p>
                     </div>
 
-                    <form onSubmit={handleSubmit} className="space-y-5">
+                    <form onSubmit={handleSubmit} className="space-y-3">
                         {isRegister && (
                             <div className="space-y-1.5 animate-fade-in">
                                 <label className={`text-sm font-bold text-[${COLORS.SECONDARY}] ml-1 mb-2`}>Kullanıcı Adı</label>
@@ -51,8 +52,8 @@ const AuthForm = ({ isRegister, toggleAuthMode }: { isRegister: boolean, toggleA
                                     type="text"
                                     value={username}
                                     onChange={(e) => setUsername(e.target.value)}
-                                    placeholder="kullaniciadi"
-                                    className={`w-full bg-[${COLORS.BG_LIGHT}] border-2 border-transparent focus:border-[${COLORS.PRIMARY}] text-[${COLORS.SECONDARY}] rounded-xl p-3.5 outline-none transition-all shadow-sm placeholder-gray-400 font-medium`}
+                                    placeholder="kullaniciadin"
+                                    className={`w-full bg-[${COLORS.BG_LIGHT}] border-2 border-transparent focus:border-[${COLORS.PRIMARY}] text-[${COLORS.SECONDARY}] rounded-xl p-3.5 outline-none transition-all shadow-sm placeholder-gray-400 font-mono`}
                                     required
                                 />
                             </div>
@@ -64,8 +65,8 @@ const AuthForm = ({ isRegister, toggleAuthMode }: { isRegister: boolean, toggleA
                                 type="email"
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
-                                placeholder="ismin@ornek.com"
-                                className={`w-full bg-[${COLORS.BG_LIGHT}] border-2 border-transparent focus:border-[${COLORS.PRIMARY}] text-[${COLORS.SECONDARY}] rounded-xl p-3.5 mt-2 outline-none transition-all shadow-sm placeholder-gray-400 font-medium`}
+                                placeholder="glowsphere@gmail.com"
+                                className={`w-full bg-[${COLORS.BG_LIGHT}] border-2 border-transparent focus:border-[${COLORS.PRIMARY}] text-[${COLORS.SECONDARY}] rounded-xl p-3.5 mt-2 outline-none transition-all shadow-sm placeholder-gray-400 font-mono`}
                                 required
                             />
                         </div>
@@ -77,9 +78,18 @@ const AuthForm = ({ isRegister, toggleAuthMode }: { isRegister: boolean, toggleA
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
                                 placeholder="••••••••"
-                                className={`w-full bg-[${COLORS.BG_LIGHT}] border-2 border-transparent focus:border-[${COLORS.PRIMARY}] text-[${COLORS.SECONDARY}] rounded-xl p-3.5 mt-2 outline-none transition-all shadow-sm placeholder-gray-400 font-medium`}
+                                className={`w-full bg-[${COLORS.BG_LIGHT}] border-2 border-transparent focus:border-[${COLORS.PRIMARY}] text-[${COLORS.SECONDARY}] rounded-xl p-3.5 mt-2 outline-none transition-all shadow-sm placeholder-gray-400 font-mono`}
                                 required
                             />
+                            <div className="flex justify-end">
+                       {!isRegister && (
+                        <div className="flex justify-end ">
+                            <Link to="/forgot-password" className="text font-bold text-[#A7C080] hover:text-[#383a42] transition">
+                                Şifreni mi unuttun?
+                            </Link>
+                        </div>
+                    )}
+                     </div>
                         </div>
 
                         {error && (
@@ -91,7 +101,7 @@ const AuthForm = ({ isRegister, toggleAuthMode }: { isRegister: boolean, toggleA
                         <button
                             type="submit"
                             disabled={loading}
-                            className={`w-full py-3.5 px-4 rounded-xl shadow-lg text-base font-bold text-lime-600 bg-[${COLORS.SECONDARY}] hover:text-lime-700 hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 mt-2`}
+                            className={`w-full py-3.5 px-4 rounded-xl shadow-lg text-base font-bold text-[#A7C080] bg-[${COLORS.SECONDARY}] hover:text-lime-200 hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 mt-2`}
                         >
                             {loading ? <Loader2 className="w-7 h-7 animate-spin mx-auto" /> : (isRegister ? 'Kayıt Ol' : 'Giriş Yap')}
                         </button>
@@ -99,7 +109,7 @@ const AuthForm = ({ isRegister, toggleAuthMode }: { isRegister: boolean, toggleA
 
                     <p className="text-center mt-6 text-gray-600 text-sm font-medium">
                         {isRegister ? 'Zaten hesabınız var mı?' : "Hesabınız yok mu?"}
-                        <button onClick={toggleAuthMode} className={`ml-4 font-bold text-lime-600 hover:text-[${COLORS.PRIMARY}] underline decoration-2 decoration-transparent hover:decoration-[${COLORS.PRIMARY}] transition-all`}>
+                        <button onClick={toggleAuthMode} className={`ml-4 font-bold text-[#A7C080] hover:text-lime-200 underline decoration-2 decoration-transparent hover:decoration-[${COLORS.PRIMARY}] transition-all`}>
                             {isRegister ? 'Giriş Yap' : 'Kayıt Ol'}
                         </button>
                     </p>
