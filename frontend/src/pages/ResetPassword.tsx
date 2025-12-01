@@ -53,10 +53,10 @@ const ResetPassword = () => {
 
     return (
         <div className="min-h-screen flex items-center justify-center bg-[#E0E8D7] p-6">
-            <div className="bg-white p-8 sm:p-10 rounded-4xl shadow-xl w-full max-w-md border border-[#383a42]/5 animate-fade-in">
+            <div className="bg-white p-8 sm:p-10 rounded-4xl shadow-xl w-full max-w-xl border border-[#383a42]/5 animate-fade-in">
                 
                 <div className="text-center mb-8">
-                    <h1 className="text-3xl font-extrabold text-[#383a42] mb-2 tracking-tight">Yeni Şifre</h1>
+                    <h2 className="text-5xl font-extrabold text-[#383a42] mb-2 tracking-tight">Yeni Şifre</h2>
                     <p className="text-gray-500 text-sm">Hesabın için yeni ve güçlü bir şifre belirle.</p>
                 </div>
 
@@ -81,7 +81,7 @@ const ResetPassword = () => {
                                 className="w-full pl-11 pr-12 py-3 bg-[#F9FAFB] border border-gray-200 text-[#383a42] rounded-xl focus:outline-none focus:border-[#A7C080] focus:ring-2 focus:ring-[#A7C080]/20 transition font-medium"
                                 placeholder="******"
                             />
-                            <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-[#383a42]">
+                            <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-300 hover:text-lime-200">
                                 {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                             </button>
                         </div>
@@ -104,7 +104,7 @@ const ResetPassword = () => {
                         </div>
                     </div>
 
-                    <button type="submit" disabled={loading} className="btn-primary w-full py-3 text-lg">
+                    <button type="submit" disabled={loading} className="text-[#A7C080] hover:text-lime-200 w-full py-3 text-lg">
                         {loading ? <Loader2 className="animate-spin w-6 h-6" /> : 'Şifreyi Güncelle'}
                     </button>
                 </form>
