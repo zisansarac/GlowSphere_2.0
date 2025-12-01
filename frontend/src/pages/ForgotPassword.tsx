@@ -54,7 +54,7 @@ const ForgotPassword = () => {
                             <h3 className="text-xl font-bold text-[#383a42]">E-posta Gönderildi!</h3>
                             <p className="text-gray-500 text-sm mt-2">Lütfen gelen kutunu (ve spam klasörünü) kontrol et.</p>
                         </div>
-                        <Link to="/login" className="btn-primary w-full">
+                        <Link to="/" className="btn-primary w-full">
                             Giriş Yapmaya Dön
                         </Link>
                     </div>
