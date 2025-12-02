@@ -1,6 +1,7 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Loader2, Heart, Settings, Edit2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import type { Post } from '../types';
@@ -9,11 +10,12 @@ import PostDetailModal from '../components/PostDetailModal';
 
 const MyProfile = () => {
     const { user, apiRequest, displayAlert, fetchUser } = useAuth(); 
-
+    
     const [profileData, setProfileData] = useState<any>(null);
     const [myPosts, setMyPosts] = useState<Post[]>([]); 
     const [isLoading, setIsLoading] = useState(true);
     
+    // Form state'leri
     const [bio, setBio] = useState('');
     const [username, setUsername] = useState('');
     
@@ -21,17 +23,26 @@ const MyProfile = () => {
     const [isSaving, setIsSaving] = useState(false); 
     const [selectedPost, setSelectedPost] = useState<Post | null>(null);
 
-   
+
+    const displayUser = profileData || user;
+
+
+    const profileImageSrc = useMemo(() => {
+
+        if (!displayUser?.profileImage) return null;
+        
+        const separator = displayUser.profileImage.includes('?') ? '&' : '?';
+        return `${displayUser.profileImage}${separator}t=${new Date().getTime()}`;
+    }, [displayUser?.profileImage]); 
+
     useEffect(() => {
         let isMounted = true;
 
         const loadMyData = async () => {
             if (!user?._id) return;
-            
             if(!profileData) setIsLoading(true);
 
             try {
-               
                 const [userData, postsData] = await Promise.all([
                     apiRequest(`users/${user._id}`), 
                     apiRequest(`posts/user/${user._id}`)
@@ -40,7 +51,6 @@ const MyProfile = () => {
                 if (isMounted) {
                     setProfileData(userData.user);
                     setMyPosts(postsData);
-
                     setBio(userData.user.bio || '');
                     setUsername(userData.user.username || userData.user.email?.split('@')[0] || '');
                 }
@@ -52,15 +62,12 @@ const MyProfile = () => {
         };
 
         loadMyData();
-        
         return () => { isMounted = false; };
     }, [user?._id]); 
 
-   
+
     if (!user) return <div className="flex justify-center mt-20"><Loader2 className="animate-spin" /></div>; 
-    
- 
-    const displayUser = profileData || user;
+
 
     const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -85,7 +92,6 @@ const MyProfile = () => {
             
             displayAlert('Profil fotoğrafı güncellendi!', 'success');
             
-           
             setProfileData((prev: any) => ({ ...prev, profileImage: fullImageUrl }));
             fetchUser(); 
 
@@ -102,11 +108,8 @@ const MyProfile = () => {
         try {
             await apiRequest('interact/profile', 'PUT', { bio, username });
             displayAlert('Profil bilgileri güncellendi!', 'success');
-            
-            // Yerel state'i güncelle
             setProfileData((prev: any) => ({ ...prev, bio, username }));
-            fetchUser(); // Global state'i de güncelle
-
+            fetchUser(); 
         } catch (error) { 
             console.error(error); 
             displayAlert('Güncelleme başarısız.', 'error');
@@ -114,6 +117,7 @@ const MyProfile = () => {
             setIsSaving(false); 
         }
     };
+
 
     return (
         <div className="w-full min-h-screen p-6 sm:p-10 lg:pl-80 transition-all duration-300">

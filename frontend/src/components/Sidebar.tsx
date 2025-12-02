@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Home, Compass, Users, Bookmark, PlusSquare, LogOut} from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
@@ -27,6 +27,12 @@ interface SidebarProps {
 const Sidebar = ({ view, setView }: SidebarProps) => {
     const { logout, user } = useAuth();
 
+    const profileImageSrc = useMemo(() => {
+        if (!user?.profileImage) return null;
+        const separator = user.profileImage.includes('?') ? '&' : '?';
+        return `${user.profileImage}${separator}t=${new Date().getTime()}`;
+    }, [user?.profileImage]);
+
     const navItems = [
         { name: 'Home', icon: Home, view: 'home' },
         { name: 'Explore', icon: Compass, view: 'explore' },
@@ -48,8 +54,12 @@ const Sidebar = ({ view, setView }: SidebarProps) => {
                 {user && (
                     <div className="flex items-center mb-10 p-4 rounded-2xl bg-[#F5F5EC] border-2 border-[#383a42]/5 cursor-pointer hover:border-[#A7C080] transition-all shadow-sm group" onClick={() => setView('profile')}>
                         <div className="w-10 h-10 rounded-full bg-[#383a42] flex items-center justify-center text-white font-bold text-lg mr-3 shadow-md group-hover:scale-110 transition duration-300 shrink-0 overflow-hidden">
-                            {user.profileImage ? (
-                                <img src={user.profileImage} alt="Avatar" className="w-full h-full object-cover" />
+                            {profileImageSrc ? (
+                                <img 
+                                key={profileImageSrc}
+                                src={profileImageSrc} alt="Avatar" 
+                                className="w-full h-full object-cover"
+                                loading="eager" />
                             ) : (
                                 user.email[0].toUpperCase()
                             )}

@@ -10,6 +10,8 @@ interface MobileBottomBarProps {
 
 const MobileBottomBar = ({ view, setView }: MobileBottomBarProps) => {
      const { logout } = useAuth();
+
+     
      const navItems = [
         { name: 'Home', icon: Home, view: 'home' },
         { name: 'Explore', icon: Compass, view: 'explore' },
