@@ -13,6 +13,8 @@ interface AuthContextType {
     loading: boolean;
     initialLoading: boolean;
     alert: AlertState | null;
+    imageVersion: number; 
+    triggerImageRefresh: () => void;
     apiRequest: (endpoint: string, method?: 'GET' | 'POST' | 'PUT' | 'DELETE', body?: any) => Promise<any>;
     login: (email: string, password: string) => Promise<void>;
     register: (username: string, email: string, password: string) => Promise<void>;
@@ -42,14 +44,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     });
 
     const [token, setToken] = useState<string | null>(localStorage.getItem('token') || null);
-    
- 
     const [initialLoading, setInitialLoading] = useState<boolean>(!user && !!token);
-    
-
     const [loading, setLoading] = useState<boolean>(false);
-    
     const [alert, setAlert] = useState<AlertState | null>(null);
+    const [imageVersion, setImageVersion] = useState<number>(Date.now());
+
+    const triggerImageRefresh = useCallback(() => {
+        setImageVersion(Date.now());
+    }, []);
 
     useEffect(() => {
         if (token) localStorage.setItem('token', token);
@@ -125,10 +127,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             if (response.ok && data && data.user) {
 
                 if (data.user.profileImage) {
-                    const cleanUrl = data.user.profileImage.split('?')[0];
-
-                    data.user.profileImage = `${cleanUrl}?t=${new Date().getTime()}`;
-                
+                    data.user.profileImage = data.user.profileImage.split('?')[0];
                 }
         
                 setUser(data.user);
@@ -151,13 +150,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setLoading(true); 
         try {
             const data = await apiRequest('auth/login', 'POST', { email, password });
-
-            if (data.user && data.user.profileImage) {
-                const cleanUrl = data.user.profileImage.split('?')[0];
-                data.user.profileImage = `${cleanUrl}?t=${new Date().getTime()}`;
-            }
-
             setToken(data.token);
+            if(data.user.profileImage) data.user.profileImage = data.user.profileImage.split('?')[0];
             setUser(data.user);
             displayAlert('Giriş başarılı!', 'success');
         } finally {
@@ -183,6 +177,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         loading,
         initialLoading,
         alert,
+        imageVersion,
+        triggerImageRefresh,
         apiRequest,
         login,
         register,

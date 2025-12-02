@@ -9,7 +9,7 @@ import { COLORS, API_BASE_URL, SERVER_URL } from '../utils/constants';
 import PostDetailModal from '../components/PostDetailModal';
 
 const MyProfile = () => {
-    const { user, apiRequest, displayAlert, fetchUser } = useAuth(); 
+    const { user, apiRequest, displayAlert, fetchUser, imageVersion, triggerImageRefresh } = useAuth(); 
     
     const [profileData, setProfileData] = useState<any>(null);
     const [myPosts, setMyPosts] = useState<Post[]>([]); 
@@ -25,14 +25,12 @@ const MyProfile = () => {
 
 
     const displayUser = profileData || user;
-
-    const finalImageSrc = useMemo(() => {
+    const finalImageSrc = React.useMemo(() => {
         if (!displayUser?.profileImage) return null;
-
+      
         const cleanUrl = displayUser.profileImage.split('?')[0];
-  
-        return `${cleanUrl}?t=${new Date().getTime()}`;
-    }, [displayUser?.profileImage, profileData]);
+        return `${cleanUrl}?v=${imageVersion}`; 
+    }, [displayUser?.profileImage, imageVersion]);
 
     useEffect(() => {
         let isMounted = true;
@@ -90,8 +88,9 @@ const MyProfile = () => {
             await apiRequest('interact/profile', 'PUT', { profileImage: fullImageUrl });
             
             displayAlert('Profil fotoğrafı güncellendi!', 'success');
-            
-            setProfileData((prev: any) => ({ ...prev, profileImage: fullImageUrl }));
+
+            triggerImageRefresh();
+
             fetchUser(); 
 
         } catch (error) {

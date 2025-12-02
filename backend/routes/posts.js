@@ -145,7 +145,9 @@ router.get('/saved/all', protect, async (req, res) => {
 
 router.get('/user/:userId', protect, async (req, res) => {
     try { 
-        const posts = await Post.find({ user: req.params.userId }).sort({ createdAt: -1 });
+        const posts = await Post.find({ user: req.params.userId })
+        .sort({ createdAt: -1 })
+        .populate('user', ['username', 'email', 'profileImage']);
     
         res.json(posts);
     } catch (err) {
