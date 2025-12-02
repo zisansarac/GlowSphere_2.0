@@ -30,7 +30,7 @@ const Sidebar = ({ view, setView }: SidebarProps) => {
     const navItems = [
         { name: 'Home', icon: Home, view: 'home' },
         { name: 'Explore', icon: Compass, view: 'explore' },
-        { name: 'People', icon: Users, view: 'people' },
+        { name: 'Search People', icon: Users, view: 'people' },
         { name: 'Saved', icon: Bookmark, view: 'saved' },
         {name: 'Create Post', icon: PlusSquare, view:'createPost'}
     ];

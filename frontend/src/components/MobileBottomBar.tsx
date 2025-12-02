@@ -1,5 +1,5 @@
 import React from 'react';
-import { Home, Compass, PlusSquare, User as UserIcon, LogOut } from 'lucide-react';
+import { Home, Compass, PlusSquare, User as UserIcon, LogOut, Users, Bookmark } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { COLORS } from '../utils/constants';
 
@@ -14,7 +14,9 @@ const MobileBottomBar = ({ view, setView }: MobileBottomBarProps) => {
         { name: 'Home', icon: Home, view: 'home' },
         { name: 'Explore', icon: Compass, view: 'explore' },
         { name: 'Create', icon: PlusSquare, view: 'createPost' },
+        { name: 'People', icon: Users, view: 'people' },
         { name: 'Profile', icon: UserIcon, view: 'profile' },
+        { name: 'Saved', icon: Bookmark, view: 'saved' },
         { name: 'Logout', icon: LogOut, action: logout },
     ];
     

@@ -54,7 +54,7 @@ const PeopleSearch = ({ setView, setSelectedUserId }: { setView: React.Dispatch<
                         value={query}
                         onChange={(e) => setQuery(e.target.value)}
                         placeholder="Kullanıcı adı ara..."
-                        className={`w-full bg-white border-2 border-transparent focus:border-[${COLORS.PRIMARY}] rounded-2xl py-4 pl-6 pr-14 text-lg shadow-sm outline-none transition font-medium text-[${COLORS.SECONDARY}] placeholder-gray-400`}
+                        className={`w-full bg-white border-2 border-transparent focus:border-[${COLORS.PRIMARY}] rounded-2xl py-4 pl-6 pr-14 text-lg shadow-sm outline-none transition font-mono text-[${COLORS.SECONDARY}] placeholder-gray-400`}
                         autoFocus
                     />
                     <div className={`absolute right-3 top-1/2 -translate-y-1/2 p-2 text-[${COLORS.PRIMARY}]`}>

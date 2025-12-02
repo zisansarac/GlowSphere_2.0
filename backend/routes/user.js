@@ -55,15 +55,12 @@ router.get('/search/:query', async (req, res) => {
     try {
         const keyword = req.params.query;
         
-        console.log("--- ARAMA İSTEĞİ GELDİ ---");
-        console.log("Aranan Kelime:", keyword);
 
         const regex = new RegExp(keyword, 'i'); 
 
         const users = await User.find({
             $or: [
-                { username: { $regex: regex } },
-                { email: { $regex: regex } }
+                { username: { $regex: regex } }
             ]
         }).select('username email bio profileImage');
 
