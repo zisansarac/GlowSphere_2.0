@@ -25,9 +25,10 @@ const MyProfile = () => {
 
 
     const displayUser = profileData || user;
-    const finalImageSrc = React.useMemo(() => {
+   
+    const finalImageSrc = useMemo(() => {
         if (!displayUser?.profileImage) return null;
-      
+
         const cleanUrl = displayUser.profileImage.split('?')[0];
         return `${cleanUrl}?v=${imageVersion}`; 
     }, [displayUser?.profileImage, imageVersion]);
@@ -88,6 +89,8 @@ const MyProfile = () => {
             await apiRequest('interact/profile', 'PUT', { profileImage: fullImageUrl });
             
             displayAlert('Profil fotoğrafı güncellendi!', 'success');
+
+            setProfileData((prev: any) => ({ ...prev, profileImage: fullImageUrl }));
 
             triggerImageRefresh();
 
