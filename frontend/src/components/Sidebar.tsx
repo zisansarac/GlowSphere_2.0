@@ -27,11 +27,9 @@ interface SidebarProps {
 const Sidebar = ({ view, setView }: SidebarProps) => {
     const { logout, user, imageVersion } = useAuth();
 
-    let profileImageSrc = null;
-    if (user?.profileImage) {
-        const cleanUrl = user.profileImage.split('?')[0];
-        profileImageSrc = `${cleanUrl}?v=${imageVersion}`;
-    }
+    const baseProfileUrl = user?.profileImage ? user.profileImage.split('?')[0] : null;
+
+    const uniqueProfileSrc = baseProfileUrl ? `${baseProfileUrl}?v=${imageVersion}` : null;
 
     const navItems = [
         { name: 'Home', icon: Home, view: 'home' },
@@ -54,10 +52,11 @@ const Sidebar = ({ view, setView }: SidebarProps) => {
                 {user && (
                     <div className="flex items-center mb-10 p-4 rounded-2xl bg-[#F5F5EC] border-2 border-[#383a42]/5 cursor-pointer hover:border-[#A7C080] transition-all shadow-sm group" onClick={() => setView('profile')}>
                         <div className="w-10 h-10 rounded-full bg-[#383a42] flex items-center justify-center text-white font-bold text-lg mr-3 shadow-md group-hover:scale-110 transition duration-300 shrink-0 overflow-hidden">
-                            {profileImageSrc ? (
+                            {uniqueProfileSrc ? (
                                 <img 
-                                key={profileImageSrc}
-                                src={profileImageSrc} alt="Avatar" className="w-full h-full object-cover" />
+                                key={uniqueProfileSrc}
+                                src={uniqueProfileSrc} alt="Avatar" 
+                                className="w-full h-full object-cover" />
                             ) : (
                                 user.email[0].toUpperCase()
                             )}
