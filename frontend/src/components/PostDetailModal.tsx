@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { X, Edit2, Trash2, Loader2, Send, Heart, MessageCircle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import type { Post, User } from '../types';
@@ -41,7 +41,17 @@ const PostDetailModal = ({
     const [likesCount, setLikesCount] = useState(post.likesCount || 0);
     const [isAnimating, setIsAnimating] = useState(false); 
 
+    const postUser = currentPost.user;
     const isPostOwner = currentPost.user?._id === currentUser._id;
+
+    const profileImageSrc = useMemo(() => {
+        if (!postUser?.profileImage) return null;
+ 
+        if (postUser.profileImage.includes('?t=')) return postUser.profileImage;
+
+        const separator = postUser.profileImage.includes('?') ? '&' : '?';
+        return `${postUser.profileImage}${separator}t=${new Date().getTime()}`;
+    }, [postUser?.profileImage]);
 
     useEffect(() => {
 
@@ -176,14 +186,19 @@ const PostDetailModal = ({
                     <div className="p-5 border-b border-gray-100 flex items-center justify-between shrink-0">
                         <div className="flex items-center space-x-3">
                             <div className="w-10 h-10 rounded-full bg-[#383a42] flex items-center justify-center text-white font-bold overflow-hidden">
-                                {currentPost.user?.profileImage ? (
-                                    <img src={currentPost.user.profileImage} className="w-full h-full object-cover" alt="avatar" />
+                                {profileImageSrc ? (
+                                    <img 
+                                        key={profileImageSrc} 
+                                        src={profileImageSrc} 
+                                        className="w-full h-full object-cover" 
+                                        alt="avatar" 
+                                    />
                                 ) : (
-                                    currentPost.user?.email?.[0]?.toUpperCase()
+                                    postUser?.email?.[0]?.toUpperCase() || 'U'
                                 )}
                             </div>
                             <div>
-                                <p className="font-bold text-[#383a42] text-sm">@{currentPost.user?.username || 'User'}</p>
+                                <p className="font-bold text-[#383a42] text-sm">@{postUser?.username || postUser?.email?.split('@')[0] || 'Kullanıcı'}</p>
                                 <p className="text-xs text-gray-400">Post Detayı</p>
                             </div>
                         </div>
@@ -217,10 +232,10 @@ const PostDetailModal = ({
                                 <div key={comment._id} className="flex space-x-3 group w-full">
                                     <div className="w-8 h-8 rounded-full bg-gray-300 flex items-center justify-center text-white font-bold text-xs shrink-0 overflow-hidden">
                                         {comment.user?.profileImage ? (
-                                            <img src={comment.user.profileImage} alt="U" className="w-full h-full object-cover" />
-                                        ) : (
-                                            comment.user?.username?.[0]?.toUpperCase() || 'U'
-                                        )}
+                                                <img src={comment.user.profileImage} alt="U" className="w-full h-full object-cover" />
+                                            ) : (
+                                                comment.user?.username?.[0]?.toUpperCase() || 'U'
+                                            )}
                                     </div>
                                     <div className="grow min-w-0">
                                         <div className="bg-white p-3 rounded-r-xl rounded-bl-xl shadow-sm border border-gray-100">
@@ -268,7 +283,7 @@ const PostDetailModal = ({
 
                         <form onSubmit={handleSubmitComment} className="flex items-center gap-2">
                             <input type="text" value={newComment} onChange={(e) => setNewComment(e.target.value)} placeholder="Yorum ekle..." className={`grow text-gray-600 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-[${COLORS.PRIMARY}]/50 transition text-sm`} />
-                            
+
                             <button type="submit" disabled={submitting || !newComment.trim()} className={`text-[${COLORS.PRIMARY}] font-bold text-sm hover:text-lime-200 disabled:opacity-50 px-2 transition`}><Send className="w-5 h-5 transform -rotate-45" /></button>
                         </form>
                     </div>
