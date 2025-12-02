@@ -9,7 +9,7 @@ import { COLORS, API_BASE_URL, SERVER_URL } from '../utils/constants';
 import PostDetailModal from '../components/PostDetailModal';
 
 const MyProfile = () => {
-    const { user, apiRequest, displayAlert, fetchUser, imageVersion, triggerImageRefresh } = useAuth(); 
+    const { user, apiRequest, displayAlert, fetchUser, imageVersion, triggerImageRefresh, logout } = useAuth(); 
     
     const [profileData, setProfileData] = useState<any>(null);
     const [myPosts, setMyPosts] = useState<Post[]>([]); 
@@ -119,6 +119,25 @@ const MyProfile = () => {
         }
     };
 
+    const handleDeleteAccount = async () => {
+
+    if (!window.confirm("Hesabını kalıcı olarak silmek istediğine emin misin? Bu işlem geri alınamaz!")) {
+        return;
+    }
+
+    if (!window.confirm("Son kararınız mı? Tüm postlarınız ve verileriniz silinecek.")) {
+        return;
+    }
+
+    try {
+        await apiRequest('auth/delete', 'DELETE');
+        displayAlert('Hesabınız başarıyla silindi. Üzgünüz, sizi özleyeceğiz!', 'info');
+        logout(); 
+    } catch (error) {
+        displayAlert('Hesap silinirken hata oluştu.', 'error');
+    }
+};
+
 
     return (
         <div className="w-full min-h-screen p-6 sm:p-10 lg:pl-80 transition-all duration-300">
@@ -227,6 +246,21 @@ const MyProfile = () => {
                         </div>
                     </form>
                 </div>
+
+                <div className="bg-red-50 p-6 rounded-3xl border-2 border-red-100 mt-8 mb-10">
+               <h3 className="font-bold text-red-800 mb-2 flex items-center text-lg">
+                Hesap İşlemleri
+               </h3>
+               <p className="text-red-600/70 text-sm mb-4">
+                  Hesabınızı sildiğinizde tüm paylaşımlarınız, yorumlarınız ve takipçileriniz kalıcı olarak silinir. Bu işlem geri alınamaz.
+               </p>
+             <button 
+               onClick={handleDeleteAccount}
+               className="w-100 py-3 border-2 bg-amber-400 border-red-200 text-red-500 font-bold rounded-xl hover:bg-red-500 hover:text-white transition shadow-sm"
+             >
+                    Hesabımı Kalıcı Olarak Sil
+            </button>
+          </div>
 
                 <div>
                     <h3 className={`text-2xl font-bold text-[${COLORS.SECONDARY}] mb-6 border-b pb-2 inline-block`}>Postlarım</h3>

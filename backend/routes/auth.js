@@ -3,7 +3,12 @@ const crypto = require('crypto');
 const sendEmail = require('../utils/sendEmail');
 const router = express.Router();
 const User = require('../models/User');
+const Post = require('../models/Post');
+const Comment = require('../models/Comment');
+const Like = require('../models/Like');
+const Follow = require('../models/Follow');
 const jwt = require('jsonwebtoken');
+const { protect } = require('../middleware/authMiddleware');
 
 
 const generateToken = (id) => {
@@ -176,6 +181,28 @@ router.put('/resetpassword/:resetToken', async (req, res) => {
     } catch (err) {
         console.error(err);
         res.status(500).send('Sunucu hatası.');
+    }
+});
+
+router.delete('/delete', protect, async (req, res) => {
+    try {
+        const userId = req.user.id;
+
+        await Post.deleteMany({ user: userId });
+
+        await Comment.deleteMany({ user: userId });
+
+        await Like.deleteMany({ user: userId });
+
+        await Follow.deleteMany({ $or: [{ follower: userId }, { following: userId }] });
+
+        await User.findByIdAndDelete(userId);
+
+        res.json({ msg: 'Hesap başarıyla silindi.' });
+
+    } catch (err) {
+        console.error("Hesap silme hatası:", err.message);
+        res.status(500).send('Sunucu hatası');
     }
 });
 
