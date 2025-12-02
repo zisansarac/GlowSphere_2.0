@@ -268,7 +268,8 @@ const PostDetailModal = ({
 
                         <form onSubmit={handleSubmitComment} className="flex items-center gap-2">
                             <input type="text" value={newComment} onChange={(e) => setNewComment(e.target.value)} placeholder="Yorum ekle..." className={`grow text-gray-600 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-[${COLORS.PRIMARY}]/50 transition text-sm`} />
-                            <button type="submit" disabled={submitting || !newComment.trim()} className={`text-[${COLORS.PRIMARY}] font-bold text-sm hover:text-[#383a42] disabled:opacity-50 px-2 transition`}><Send className="w-5 h-5 transform -rotate-45" /></button>
+                            
+                            <button type="submit" disabled={submitting || !newComment.trim()} className={`text-[${COLORS.PRIMARY}] font-bold text-sm hover:text-lime-200 disabled:opacity-50 px-2 transition`}><Send className="w-5 h-5 transform -rotate-45" /></button>
                         </form>
                     </div>
                 </div>
