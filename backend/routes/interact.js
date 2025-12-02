@@ -76,14 +76,21 @@ router.get('/is-following/:id', protect, async (req, res) => {
 // @desc    Profil bilgilerini güncelle (Bio, Username, ProfileImage)
 // @access  Private
 router.put('/profile', protect, async (req, res) => {
- 
     const { bio, username, profileImage } = req.body; 
     
+    console.log("--- Profil Güncelleme ---");
+    console.log("Gelen Resim:", profileImage); 
+
     const fieldsToUpdate = {};
     if (bio) fieldsToUpdate.bio = bio;
     if (username) fieldsToUpdate.username = username;
     
-    if (profileImage) fieldsToUpdate.profileImage = profileImage; 
+    if (profileImage) {
+   
+        const cleanUrl = profileImage.split('?')[0];
+        fieldsToUpdate.profileImage = cleanUrl;
+        console.log("Kaydedilen Saf URL:", cleanUrl);
+    }
 
     try {
         const user = await User.findByIdAndUpdate(
@@ -95,7 +102,7 @@ router.put('/profile', protect, async (req, res) => {
         res.json({ msg: 'Profil başarıyla güncellendi.', user });
 
     } catch (err) {
-        console.error(err.message);
+        console.error("Profil Güncelleme Hatası:", err.message);
         if (err.code === 11000) { 
              return res.status(400).json({ msg: 'Bu kullanıcı adı veya e-posta zaten kullanımda.' });
         }
