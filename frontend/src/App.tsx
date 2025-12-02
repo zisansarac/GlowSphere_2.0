@@ -55,7 +55,8 @@ const AppContent = () => {
             default: return <HomeFeed setView={setView} setSelectedUserId={setSelectedUserId} />;
         }
     };
-
+ 
+    const userImageKey = user?.profileImage ? user.profileImage : 'no-image';
 
     return (
         <Routes>
@@ -73,8 +74,17 @@ const AppContent = () => {
                     <AuthForm isRegister={isRegister} toggleAuthMode={toggleAuthMode} />
                 ) : (
                     <div className="flex w-full min-h-screen bg-[#F5F5EC] relative">
-                        <Sidebar view={view} setView={setView} />
-                        <MobileBottomBar view={view} setView={setView} />
+                        <Sidebar 
+                          key={`sidebar-${userImageKey}`} 
+                          view={view} 
+                          setView={setView} 
+                        />
+
+                        <MobileBottomBar 
+                          key={`mobilebar-${userImageKey}`} 
+                          view={view} 
+                          setView={setView} 
+                        />
                         
                         <div className="grow w-full lg:pl-0"> 
                              {renderView()}

@@ -33,14 +33,13 @@ const PostCard = memo(({
     
     const isOwner = post.user?._id === currentUserId;
 
-    // Post ID değişmediği sürece bu effect tekrar çalışmaz
     useEffect(() => {
         let isMounted = true;
         if (!post._id) return;
 
         const checkStatus = async () => {
             try {
-                // Paralel istek atarak hızlandırıyoruz
+              
                 const [likeData, saveData] = await Promise.all([
                     apiRequest(`posts/is-liked/${post._id}`).catch(() => ({ isLiked: false })),
                     apiRequest(`posts/is-saved/${post._id}`).catch(() => ({ isSaved: false }))

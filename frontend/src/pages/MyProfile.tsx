@@ -26,7 +26,13 @@ const MyProfile = () => {
 
     const displayUser = profileData || user;
 
+    const finalImageSrc = useMemo(() => {
+        if (!displayUser?.profileImage) return null;
 
+        const cleanUrl = displayUser.profileImage.split('?')[0];
+  
+        return `${cleanUrl}?t=${new Date().getTime()}`;
+    }, [displayUser?.profileImage, profileData]);
 
     useEffect(() => {
         let isMounted = true;
@@ -59,7 +65,7 @@ const MyProfile = () => {
     }, [user?._id]); 
 
 
-    if (!user) return <div className="flex justify-center mt-20"><Loader2 className="animate-spin" /></div>; 
+   if (!user) return <div className="flex justify-center mt-20"><Loader2 className="animate-spin" /></div>;
 
 
     const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -142,10 +148,10 @@ const MyProfile = () => {
                         />
                         <label htmlFor="profilePicInput" className="cursor-pointer block relative">
                             <div className={`w-32 h-32 rounded-full bg-[${COLORS.SECONDARY}] flex items-center justify-center text-white font-extrabold text-5xl shadow-2xl overflow-hidden border-4 border-white ring-2 ring-[${COLORS.PRIMARY}]/50`}>
-                                {displayUser.profileImage ? (
+                                {finalImageSrc ? (
                                     <img
-                                    key={displayUser.profileImage}
-                                    src={displayUser.profileImage} 
+                                    key={finalImageSrc}
+                                    src={finalImageSrc} 
                                     alt="Profil" className="w-full h-full object-cover" />
                                 ) : (
                                     displayUser.email[0].toUpperCase()
