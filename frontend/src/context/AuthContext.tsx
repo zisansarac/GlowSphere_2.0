@@ -125,9 +125,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             if (response.ok && data && data.user) {
 
                 if (data.user.profileImage) {
-                    data.user.profileImage = `${data.user.profileImage}?t=${new Date().getTime()}`;
+                    const cleanUrl = data.user.profileImage.split('?')[0];
+
+                    data.user.profileImage = `${cleanUrl}?t=${new Date().getTime()}`;
+                
                 }
-            
+        
                 setUser(data.user);
             } else if (response.status === 401) {
                 logout();
@@ -150,9 +153,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             const data = await apiRequest('auth/login', 'POST', { email, password });
 
             if (data.user && data.user.profileImage) {
-                data.user.profileImage = `${data.user.profileImage}?t=${new Date().getTime()}`;
+                const cleanUrl = data.user.profileImage.split('?')[0];
+                data.user.profileImage = `${cleanUrl}?t=${new Date().getTime()}`;
             }
-            
+
             setToken(data.token);
             setUser(data.user);
             displayAlert('Giriş başarılı!', 'success');
