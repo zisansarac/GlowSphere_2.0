@@ -108,8 +108,27 @@ const AuthForm = ({ isRegister, toggleAuthMode }: { isRegister: boolean, toggleA
                     </form>
 
                     <p className="text-center mt-6 text-gray-600 text-sm font-medium">
+
+                        {!isRegister && (
+                       <div className="mt-2">
+                         <p className="text-xs text-left text-lime-700 mt-3 mb-2">
+                         Üye olmadan incelemek için tıklayın.
+                       </p>
+                        <button
+                         type="button" 
+                        onClick={() => {
+                          login('demo@glowsphere.com', 'demo123'); 
+                        }}
+                        className="w-full py-3 bg-indigo-50 font-bold rounded-xl text-[#A7C080] hover:text-lime-200 transition border border-indigo-200 flex items-center    justify-center gap-2"
+                      >
+                            Misafir Girişi (Demo)
+                         </button>
+               
+              </div>
+            )}
+                        
                         {isRegister ? 'Zaten hesabınız var mı?' : "Hesabınız yok mu?"}
-                        <button onClick={toggleAuthMode} className={`ml-4 font-bold text-[#A7C080] hover:text-lime-200 underline decoration-2 decoration-transparent hover:decoration-[${COLORS.PRIMARY}] transition-all`}>
+                        <button onClick={toggleAuthMode} className={`ml-4 mt-5 font-bold text-[#A7C080] hover:text-lime-200 underline decoration-2 decoration-transparent hover:decoration-[${COLORS.PRIMARY}] transition-all`}>
                             {isRegister ? 'Giriş Yap' : 'Kayıt Ol'}
                         </button>
                     </p>
